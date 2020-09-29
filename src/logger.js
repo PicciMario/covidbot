@@ -15,7 +15,7 @@ export default class Logger{
 		console.log(
 			'[' + level + ']', 
 			this.prefix,
-			Moment().locale('it').format('DD/MM/YYYY-HH:MM:ss'),
+			Moment().locale('it').format('DD/MM/YYYY-HH:mm:ss'),
 			[...args]
 		);
 	}
