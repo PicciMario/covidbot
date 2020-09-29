@@ -1,0 +1,38 @@
+{
+  "name": "covidbot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon --exec \"babel-node\" ./src/index.js",
+    "build": "babel src -d dist",
+    "prod": "node ./dist/index.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "chart.js": "^2.9.3",
+    "chartjs-node-canvas": "^3.0.6",
+    "dotenv": "^8.2.0",
+    "moment": "^2.29.0",
+    "node-cron": "^2.0.3",
+    "node-telegram-bot-api": "^0.50.0"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.11.6",
+    "@babel/core": "^7.11.6",
+    "@babel/preset-env": "^7.11.5",
+    "@babel/node": "^7.10.5",
+    "nodemon": "^2.0.4"
+  },
+  "babel": {
+    "presets": [
+      "@babel/preset-env"
+    ],
+    "plugins": [
+      [
+        "@babel/plugin-proposal-class-properties"
+      ]
+    ]
+  }
+}
