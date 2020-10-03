@@ -5,6 +5,7 @@ import telegrambot from 'node-telegram-bot-api';
 import moment from 'moment'
 import Logger from './logger'
 import dotenv from 'dotenv'
+import Redis from 'redis';
 
 // Init logger
 const log = new Logger("index.js")
@@ -27,6 +28,12 @@ if (!token){
 const bot = new telegrambot(token, {polling: true});
 bot.on("polling_error", (err) => log.error("Polling error: " + err));
 
+// REDIS connection.
+const redisclient = Redis.createClient({
+	host: 'redis',
+	port: 6379
+});
+
 /**
  * Data retrieved.
  */
@@ -45,10 +52,10 @@ const subscribersList = {}
 retrieveAll();
 
 // Scheduling to retrieve updated data 
-cron.schedule('00 17 * * *', retrieveAll, {timezone: "Europe/Rome"});
+cron.schedule('00 17 * * *', retrieveAll);
 
 // Scheduling to send updated data to all subscribers
-cron.schedule('05 17 * * *', sendAll, {timezone: "Europe/Rome"});
+cron.schedule('05 17 * * *', sendAll);
 
 // ------------------------------------------------------------------------------------------------
 
@@ -140,30 +147,21 @@ function createAndamentoNazionaleGraph() {
 
 // ------------------------------------------------------------------------------------------------
 
+// REDIS set holding the subscribers list (as list of chat id)
+const REDIS_SUBSCRIBERS = 'subscribers'
+// Prefix to REDIS hashes holding data for each subscriber (PREFIX + chatId)
+const REDIS_SUB_PREFIX = 'sub:'
+
 function addToSubscribersList(chatId){
-	log.debug("Subscription requested by " + chatId)
-	subscribersList[chatId] = {
-		timestamp: moment().format("DD MMM YYYY HH:mm:SS").toString()
-	}
+	redisclient.sadd(REDIS_SUBSCRIBERS, chatId, (err, res) => log.debug(`Adding new subscribe ${chatId} to db: ${res} (error: ${err})`))
+	redisclient.hset(REDIS_SUB_PREFIX + chatId, 'timestamp', moment().format("DD MMM YYYY HH:mm:SS").toString())
+	bot.sendMessage(chatId, "Subscription requested (check /status for current situation, might take a while).")
 }
 
 function removeFromSubscribersList(chatId){
-	log.debug("Subscription removal requested by " + chatId)
-	delete subscribersList[chatId]
-}
-
-function subscribersListStatus(chatId){
-	return subscribersList[chatId];
-}
-
-function subscribersListStatusMessage(chatId){
-	let elem = subscribersListStatus(chatId)
-	if (elem){
-		return "Chat subscribed to updates since " + elem.timestamp
-	}
-	else {
-		return "Chat currently not subscribed"
-	}	
+	redisclient.srem(REDIS_SUBSCRIBERS, chatId, (err, res) => log.debug(`Removing subscription of ${chatId} from db: ${res} (error: ${err})`))
+	redisclient.del(REDIS_SUB_PREFIX + chatId)
+	bot.sendMessage(chatId, "Cancellation requested (check /status for current situation, might take a while).")
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -178,18 +176,28 @@ plot - Request actual situation plot
 bot.onText(/\/sub/, (msg, match) => {
 	const chatId = msg.chat.id;
 	addToSubscribersList(chatId)
-	bot.sendMessage(chatId, subscribersListStatusMessage(chatId))
 });
 
 bot.onText(/\/unsub/, (msg, match) => {
 	const chatId = msg.chat.id;
 	removeFromSubscribersList(chatId)
-	bot.sendMessage(chatId, subscribersListStatusMessage(chatId))
 });
 
-bot.onText(/\/status/, (msg, match) => {
+bot.onText(/\/status/, async (msg, match) => {
+	
 	const chatId = msg.chat.id;
-	bot.sendMessage(chatId, subscribersListStatusMessage(chatId))
+
+	redisclient.sismember(REDIS_SUBSCRIBERS, chatId, (err, res) => {
+		if (res === 1){
+			redisclient.hget(REDIS_SUB_PREFIX + chatId, 'timestamp', (err, res) => {
+				bot.sendMessage(chatId, `Subscribed since ${res}`)
+			})
+		}
+		else {
+			bot.sendMessage(chatId, `Currently not subscribed`)
+		}
+	})
+
 });
 
 bot.onText(/\/plot/, (msg, match) => {
