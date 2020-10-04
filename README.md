@@ -10,6 +10,8 @@ Supported commands:
 - /unsub - Unsubscribe
 - /status - Subscription status
 - /plot - Request actual situation plot
+- /about - About
+- /help - Commands list
 
 ## Technical details
 
@@ -37,6 +39,8 @@ This code is far from great and is provided as a learning opportunity, both for 
 	
 	```
 	docker-compose up -d
+	// If you have made some kind of update use instead:
+	// docker-compose up -d --build
 	```
 
 	should do the trick.
