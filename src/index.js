@@ -39,13 +39,6 @@ const redisclient = Redis.createClient({
  */
 let italianData = []
 
-/**
- * Subscribers list.
- * key: chatId
- * content: {timestamp}
- */
-const subscribersList = {}
-
 // ------------------------------------------------------------------------------------------------
 
 // Initial retrieve of italian data
@@ -76,32 +69,38 @@ function retrieveAll(){
  */
 function sendAll() {
 
-	log.debug("Sending updates to subscribers...")
-	if (Object.keys(subscribersList).length === 0) {
-		log.debug('..no subscriber to send to.')
-		return;
-	}
-	else {
-		log.debug(`..sending to ${Object.keys(subscribersList).length} subscribers..`)
-	}
+	log.debug("Sendall");
 
-	createAndamentoNazionaleGraph().then((buffer) => {
+	redisclient.smembers(REDIS_SUBSCRIBERS, (err, subscribers) => {
 
-		Object.keys(subscribersList).forEach(chatId => {
-			bot.sendPhoto(
-				chatId, 
-				buffer,
-				{},
-				{
-					filename: 'plot.png',
-					contentType: 'image/png'
-				}
-			)
-		})
+		log.debug("Sending updates to subscribers...")
+		if (subscribers.length === 0) {
+			log.debug('..no subscriber to send to.')
+			return;
+		}
+		else {
+			log.debug(`..sending to ${subscribers.length} subscribers..`)
+		}
+	
+		createAndamentoNazionaleGraph().then((buffer) => {
+	
+			subscribers.forEach(chatId => {
+				bot.sendPhoto(
+					chatId, 
+					buffer,
+					{},
+					{
+						filename: 'plot.png',
+						contentType: 'image/png'
+					}
+				)
+			})
+	
+			log.debug('...sent.')
+	
+		});
 
-		log.debug('...sent.')
-
-	});
+	})
 
 }
 
@@ -174,6 +173,9 @@ plot - Request actual situation plot
 about - About this bot
 help - Commands list
 */
+
+// FOR TESTING PURPOSES ONLY!
+//bot.onText(/\/sendall/, (msg, match) => sendAll())
 
 bot.onText(/\/sub/, (msg, match) => {
 	const chatId = msg.chat.id;
