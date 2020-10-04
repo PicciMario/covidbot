@@ -171,6 +171,8 @@ sub - Subscribe to daily COVID-19 updates
 unsub - Unsubscribe
 status - Subscription status
 plot - Request actual situation plot
+about - About this bot
+help - Commands list
 */
 
 bot.onText(/\/sub/, (msg, match) => {
@@ -215,5 +217,45 @@ bot.onText(/\/plot/, (msg, match) => {
 			}
 		)
 	});
+
+})
+
+bot.onText(/\/about/, (msg, match) => {
+
+	const chatId = msg.chat.id;
+
+	bot.sendMessage(chatId, 
+`COVID-19 bot by PicciMario <mario.piccinelli@gmail.com>. 
+Daily updates of new cases in Italy, every day at about 5pm italian time (if subscribed). 
+See https://github.com/PicciMario/covidbot for technical details.`
+	);
+
+})
+
+bot.onText(/\/help/, (msg, match) => {
+
+	const chatId = msg.chat.id;
+
+	bot.sendMessage(chatId, 
+`COVID-19 bot by PicciMario <mario.piccinelli@gmail.com>. 
+Commands list:
+  /sub - Subscribe to daily COVID-19 updates
+  /unsub - Unsubscribe
+  /status - Subscription status
+  /plot - Request actual situation plot
+  /about - About this bot
+  /help - This list`
+	);
+
+})
+
+bot.onText(/\/start/, (msg, match) => {
+
+	const chatId = msg.chat.id;
+
+	bot.sendMessage(chatId, 
+`COVID-19 bot by PicciMario <mario.piccinelli@gmail.com>. 
+Type /about or /help to begin.`
+	);
 
 })

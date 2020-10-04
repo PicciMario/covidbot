@@ -5,4 +5,7 @@ services:
     environment: 
       TZ: "Europe/Rome"
   redis:
-    image: redis
+    image: "redis:alpine"
+    volumes:
+      - "./redisdata:/data"
+    entrypoint: "redis-server --appendonly yes"
