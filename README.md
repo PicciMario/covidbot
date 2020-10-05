@@ -51,4 +51,4 @@ This code is far from great and is provided as a learning opportunity, both for 
 
 ## License
 
-[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/deed.it) - [Show license text](https://github.com/pcm-dpc/COVID-19/blob/master/LICENSE)
+[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/deed.it) - [Show license text](https://github.com/PicciMario/covidbot/blob/master/LICENSE.txt)
