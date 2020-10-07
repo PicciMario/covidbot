@@ -1,7 +1,9 @@
 # COVIDBOT
-by *PicciMario <mario.piccinelli@gmail.com>*
 
-Simple Telegram bot written in NodeJS. Retrieves italian state-level COVID-19 infection numbers (new daily infections) from the Italian Ministry of Health website; provides upon request a plot of the last 3 months values. Also, an user can subscribe and receive updates every evening at 17.05 (italian ministry of health publishes daily data at 5pm).
+[![GitHub license](https://img.shields.io/badge/License-Creative%20Commons%20Attribution%204.0%20International-blue)](https://github.com/PicciMario/covidbot/blob/master/LICENSE.txt)
+[![GitHub commit](https://img.shields.io/github/last-commit/PicciMario/covidbot)](https://github.com/PicciMario/covidbot/commits/master)
+
+Simple Telegram bot written in NodeJS. Retrieves italian state-level COVID-19 infection numbers (new daily infections) from the Italian Civil Protection [GitHub repository](https://github.com/pcm-dpc/COVID-19); provides upon request a plot of the last 3 months values. Also, an user can subscribe and receive updates every evening at 17.05 (italian ministry of health publishes daily data at 5pm).
 
 ![Sample plot](/sampleplot.jpg)
 
@@ -44,3 +46,9 @@ This code is far from great and is provided as a learning opportunity, both for 
 	```
 
 	should do the trick.
+
+---
+
+## License
+
+[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/deed.it) - [Show license text](https://github.com/PicciMario/covidbot/blob/master/LICENSE.txt)
