@@ -4,6 +4,8 @@ services:
     build: .
     environment: 
       TZ: "Europe/Rome"
+    depends_on:
+      - redis
   redis:
     image: "redis:alpine"
     volumes:
