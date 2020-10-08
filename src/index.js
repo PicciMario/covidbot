@@ -17,6 +17,13 @@ dotenv.config()
 // (mime type warning even when the type is explicitly set)
 process.env.NTBA_FIX_350 = true;
 
+/**
+ * Data retrieved stored as local variable.
+ */
+let italianData = []
+
+// Initialize Telegram Bot ------------------------------------------------------------------------
+
 // Bot token
 const token = process.env.BOT_TOKEN;
 if (!token){
@@ -26,29 +33,42 @@ if (!token){
 
 // Create a bot that uses 'polling' to fetch new updates
 const bot = new telegrambot(token, {polling: true});
-bot.on("polling_error", (err) => log.error("Polling error: " + err));
+bot.on("polling_error", (err) => log.error("Telegram polling error", err));
 
-// REDIS connection.
+// Initialize REDIS connection --------------------------------------------------------------------
+
+// Read params from .env file
+const redisHost = process.env.REDIS_HOST || 'localhost';
+const redisPort = process.env.REDIS_PORT || 6379;
+
+// REDIS connection retry strategy
+function _redis_retry_strategy({error, total_retry_time, attempt}){
+
+	// Total time: 60 sec
+	if (total_retry_time > 1000 * 60) {
+		log.debug(`Unable to reach Redis instance on ${redisHost}:${redisPort}, retry time exhausted, exiting.`);
+		process.exit()
+	}
+
+	// Max connection attempts: 10
+	if (attempt > 10) {
+		log.debug(`Unable to reach Redis instance on ${redisHost}:${redisPort}, retry attempts exhausted, exiting.`);
+		process.exit()
+	}
+
+	log.debug(`Unable to reach Redis instance on ${redisHost}:${redisPort}, will retry...`);
+	
+	// Next attempt in X ms.
+	return 10000; 
+
+}
+
+// Init connection
 const redisclient = Redis.createClient({
-	host: 'redis',
-	port: 6379
+	host: redisHost,
+	port: redisPort,
+	retry_strategy: _redis_retry_strategy
 });
-
-/**
- * Data retrieved.
- */
-let italianData = []
-
-// ------------------------------------------------------------------------------------------------
-
-// Initial retrieve of italian data
-retrieveAll();
-
-// Scheduling to retrieve updated data 
-cron.schedule('00 17 * * *', retrieveAll);
-
-// Scheduling to send updated data to all subscribers
-cron.schedule('05 17 * * *', sendAll);
 
 // ------------------------------------------------------------------------------------------------
 
@@ -261,3 +281,14 @@ Type /about or /help to begin.`
 	);
 
 })
+
+// ------------------------------------------------------------------------------------------------
+
+// Initial retrieve of italian data
+retrieveAll();
+
+// Scheduling to retrieve updated data 
+cron.schedule('00 17 * * *', retrieveAll);
+
+// Scheduling to send updated data to all subscribers
+cron.schedule('05 17 * * *', sendAll);
