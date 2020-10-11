@@ -32,60 +32,52 @@ function _sortByDateColumn(a, b, dateColumn = 'data'){
 }
 
 /**
- * Retrieves italian state-level daily data and hands them to the callback.
- * The "data" item in the records is converted to a moment object, and the
- * array is sorted by that.
- * @param {*} callback 
+ * Retrieves italian state-level daily data. Returns a promise which resolves
+ * on the data array. The "data" item in the records is converted to a moment object, 
+ * and the array is sorted by that. 
  */
-export function retrieveAndamentoNazionale(callback = () => {}){
+export function retrieveDailyData(){
 
-	log.debug('Retrieving italian nation-level data...')
+	return new Promise((resolve, reject) => {
 
-	https.get(ANDAMENTO_NAZIONALE, resp => {
+		https.get(ANDAMENTO_NAZIONALE, resp => {
 
-		const { statusCode } = resp;
-	  
-		// Any 2xx status code signals a successful response but
-		// here we're only checking for 200.
-		if (statusCode !== 200) {
-		  let error = new Error(`Request Failed. Status Code: ${statusCode}`);
-		  log.error(error.message);
-		  // Consume response data to free up memory
-		  resp.resume();
-		  return;		  
-		}
-		
-		let data = ''
+			const { statusCode } = resp;
 
-		// Accumulates data retrieved from socket
-		resp.on('data', chunk => data += chunk)
-		
-		// Collects and parses received data after finishing retrieval
-		resp.on('end', () => {
-
-			try{
-
-				let parsed = 
-					JSON.parse(data)
-					.map(elem => _parseAndConvertDate(elem))
-					.sort((a,b) => _sortByDateColumn(a, b))			
-
-				log.debug(`...italian nation-level data done (${parsed.length} records).`)
-
-				callback(parsed);
-
+			if (statusCode !== 200) {
+				// Consume response data to free up memory
+				resp.resume();
+				reject(`Request failed while fetching data. Status Code: ${statusCode}`);		  
 			}
-			catch(err){
+			
+			let data = ''
 
-				log.err(`...error while parsing retrieved data: ${err.message}`)
-				callback(null);
+			// Accumulates data retrieved from socket
+			resp.on('data', chunk => data += chunk)
+			
+			// Collects and parses received data after finishing retrieval
+			resp.on('end', () => {
 
-			}
+				try{
 
-		})
+					let parsed = 
+						JSON.parse(data)
+						.map(elem => _parseAndConvertDate(elem))
+						.sort((a,b) => _sortByDateColumn(a, b))			
 
-	}).on('error', (e) => {
-		log.error("Unexpected error", e);
+					resolve(parsed);
+
+				}
+				catch(err){
+					reject(`Error while parsing retrieved data: ${err.message}`);
+				}
+
+			})
+
+		}).on('error', (e) => {
+			reject(`Unexpected error while fetching data: ${e.message}`);
+		});
+
 	});
 
 }

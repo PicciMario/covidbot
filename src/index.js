@@ -1,4 +1,4 @@
-import {retrieveAndamentoNazionale} from './datarecovery'
+import {retrieveDailyData} from './datarecovery'
 import { CanvasRenderService } from 'chartjs-node-canvas';
 import cron from 'node-cron';
 import telegrambot from 'node-telegram-bot-api';
@@ -96,9 +96,20 @@ redisclient.on("connect", function() {
  * Retrieve all data and save it in a global variable.
  */
 function retrieveAll(){	
-	retrieveAndamentoNazionale(data => {
-		if (data != null) italianData = data;
-	});
+
+	log.debug('Retrieving italian nation-level data...')
+	
+	retrieveDailyData()
+	
+	.then(data => {
+		log.debug(`...italian nation-level data done (${data.length} records).`)
+		italianData = data;
+	})
+	
+	.catch(err => {
+		log.err(err)
+	})
+
 }
 
 /**
@@ -108,7 +119,8 @@ function sendAll() {
 
 	log.debug("Sendall");
 
-	redisclient.smembers(REDIS_SUBSCRIBERS, (err, subscribers) => {
+	retrieveSubscribersList()
+	.then(subscribers => {
 
 		log.debug("Sending updates to subscribers...")
 		if (subscribers.length === 0) {
@@ -137,6 +149,23 @@ function sendAll() {
 	
 		});
 
+	})
+
+}
+
+// ------------------------------------------------------------------------------------------------
+
+/**
+ * Retrieve subscribers list. Returns a Promise which resolved in the list as an 
+ * array of chat ids.
+ * @param {*} callback 
+ */
+function retrieveSubscribersList(){
+
+	return new Promise((resolve, reject) => {
+		redisclient.smembers(REDIS_SUBSCRIBERS, (err, subscribers) => {
+			resolve(subscribers);
+		})
 	})
 
 }
@@ -212,7 +241,14 @@ help - Commands list
 */
 
 // FOR TESTING PURPOSES ONLY!
-//bot.onText(/\/sendall/, (msg, match) => sendAll())
+bot.onText(/\/sendall/, (msg, match) => sendAll())
+
+// FOR TESTING PURPOSES ONLY!
+bot.onText(/\/debug/, async (msg, match) => {
+	const chatId = msg.chat.id;
+	const subs = await retrieveSubscribersList()
+	bot.sendMessage(chatId, `Number of subscribers: ${subs.length}`)	
+})
 
 bot.onText(/\/sub/, (msg, match) => {
 	const chatId = msg.chat.id;
@@ -224,7 +260,7 @@ bot.onText(/\/unsub/, (msg, match) => {
 	removeFromSubscribersList(chatId)
 });
 
-bot.onText(/\/status/, async (msg, match) => {
+bot.onText(/\/status/, (msg, match) => {
 	
 	const chatId = msg.chat.id;
 
@@ -244,6 +280,8 @@ bot.onText(/\/status/, async (msg, match) => {
 bot.onText(/\/plot/, (msg, match) => {
 
 	const chatId = msg.chat.id;
+
+	log.debug(`Requested plot from chat id: ${chatId}`);
 
 	createAndamentoNazionaleGraph().then((buffer) => {
 		bot.sendPhoto(
