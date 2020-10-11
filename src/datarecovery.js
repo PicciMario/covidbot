@@ -39,6 +39,8 @@ function _sortByDateColumn(a, b, dateColumn = 'data'){
  */
 export function retrieveAndamentoNazionale(callback = () => {}){
 
+	log.debug('Retrieving italian nation-level data...')
+
 	https.get(ANDAMENTO_NAZIONALE, resp => {
 
 		const { statusCode } = resp;
@@ -55,18 +57,31 @@ export function retrieveAndamentoNazionale(callback = () => {}){
 		
 		let data = ''
 
+		// Accumulates data retrieved from socket
 		resp.on('data', chunk => data += chunk)
 		
+		// Collects and parses received data after finishing retrieval
 		resp.on('end', () => {
 
-			let parsed = JSON.parse(data)
+			try{
 
-			parsed = 
-				parsed
-				.map(elem => _parseAndConvertDate(elem))
-				.sort((a,b) => _sortByDateColumn(a, b))			
+				let parsed = 
+					JSON.parse(data)
+					.map(elem => _parseAndConvertDate(elem))
+					.sort((a,b) => _sortByDateColumn(a, b))			
 
-			callback(parsed)
+				log.debug(`...italian nation-level data done (${parsed.length} records).`)
+
+				callback(parsed);
+
+			}
+			catch(err){
+
+				log.err(`...error while parsing retrieved data: ${err.message}`)
+				callback(null);
+
+			}
+
 		})
 
 	}).on('error', (e) => {

@@ -41,6 +41,7 @@ bot.on("polling_error", (err) => log.error("Telegram polling error", err));
 const redisHost = process.env.REDIS_HOST || 'localhost';
 const redisPort = process.env.REDIS_PORT || 6379;
 
+// Seconds between redis connection attempts
 const SECONDS_REDIS_CONN_RETRY = 10;
 
 // REDIS connection retry strategy
@@ -73,7 +74,8 @@ const redisclient = Redis.createClient({
 	retry_strategy: _redis_retry_strategy
 });
 
-redisclient.on("connect", function(error) {
+// Callback after successful redis connection
+redisclient.on("connect", function() {
 
 	log.debug("...Redis connection established.");
 
@@ -93,11 +95,9 @@ redisclient.on("connect", function(error) {
 /**
  * Retrieve all data and save it in a global variable.
  */
-function retrieveAll(){
-	log.debug('Retrieving italian nation-level data...')
+function retrieveAll(){	
 	retrieveAndamentoNazionale(data => {
-		italianData = data;
-		log.debug(`...italian nation-level data done (${data.length} records).`)
+		if (data != null) italianData = data;
 	});
 }
 
