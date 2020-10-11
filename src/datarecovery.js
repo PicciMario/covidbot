@@ -47,7 +47,7 @@ export function retrieveDailyData(){
 			if (statusCode !== 200) {
 				// Consume response data to free up memory
 				resp.resume();
-				reject(`Request failed while fetching data. Status Code: ${statusCode}`);		  
+				reject(new Error(`Request failed while fetching data. Status Code: ${statusCode}`));
 			}
 			
 			let data = ''
@@ -69,13 +69,13 @@ export function retrieveDailyData(){
 
 				}
 				catch(err){
-					reject(`Error while parsing retrieved data: ${err.message}`);
+					reject(new Error(`Error while parsing retrieved data: ${err.message}`));
 				}
 
 			})
 
 		}).on('error', (e) => {
-			reject(`Unexpected error while fetching data: ${e.message}`);
+			reject(new Error(`Unexpected error while fetching data: ${e.message}`));
 		});
 
 	});

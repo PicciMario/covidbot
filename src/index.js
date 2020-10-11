@@ -80,10 +80,7 @@ redisclient.on("connect", function() {
 	log.debug("...Redis connection established.");
 
 	// Initial retrieve of italian data
-	retrieveAll();
-
-	// Scheduling to retrieve updated data 
-	cron.schedule('00 17 * * *', retrieveAll);
+	initialRetrieve();
 
 	// Scheduling to send updated data to all subscribers
 	cron.schedule('05 17 * * *', sendAll);
@@ -95,61 +92,62 @@ redisclient.on("connect", function() {
 /**
  * Retrieve all data and save it in a global variable.
  */
-function retrieveAll(){	
+async function initialRetrieve(){	
 
 	log.debug('Retrieving italian nation-level data...')
-	
-	retrieveDailyData()
-	
-	.then(data => {
+
+	try{
+		const data = await retrieveDailyData()
 		log.debug(`...italian nation-level data done (${data.length} records).`)
 		italianData = data;
-	})
+	}
+	catch (err){
+		log.err(`Error: ${err.message}`)
+	}
 	
-	.catch(err => {
-		log.err(err)
-	})
-
 }
 
 /**
  * Send plot data to all subscribers.
  */
-function sendAll() {
+async function sendAll() {
+	
+	try{
 
-	log.debug("Sendall");
+		const subscribers = await retrieveSubscribersList()
 
-	retrieveSubscribersList()
-	.then(subscribers => {
-
-		log.debug("Sending updates to subscribers...")
 		if (subscribers.length === 0) {
-			log.debug('..no subscriber to send to.')
+			log.debug('Send all requested, but no subscribers available. Skipping request.')
 			return;
 		}
 		else {
-			log.debug(`..sending to ${subscribers.length} subscribers..`)
+			log.debug(`Sending plot to ${subscribers.length} subscribers.`)
 		}
-	
-		createAndamentoNazionaleGraph().then((buffer) => {
-	
-			subscribers.forEach(chatId => {
-				bot.sendPhoto(
-					chatId, 
-					buffer,
-					{},
-					{
-						filename: 'plot.png',
-						contentType: 'image/png'
-					}
-				)
-			})
-	
-			log.debug('...sent.')
-	
-		});
 
-	})
+		const data = await retrieveDailyData()
+		italianData = data;	
+		log.debug(`Retrieved new data (${data.length} records).`);
+
+		const buffer = await createAndamentoNazionaleGraph()
+
+		subscribers.forEach(chatId => {
+			bot.sendPhoto(
+				chatId, 
+				buffer,
+				{},
+				{
+					filename: 'plot.png',
+					contentType: 'image/png'
+				}
+			)
+		})
+
+		log.debug('Updated plots sent to all subscribers.')
+
+	}
+	catch(err) {
+		log.err(`Unexpected error during sendAll(): ${err.message}`);
+	}
 
 }
 
