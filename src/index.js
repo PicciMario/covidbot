@@ -7,6 +7,9 @@ import Logger from './logger'
 import dotenv from 'dotenv'
 import Redis from 'redis';
 
+// Bot version
+const VERSION = '1.0.0';
+
 // Init logger
 const log = new Logger("index.js")
 
@@ -239,14 +242,18 @@ help - Commands list
 */
 
 // FOR TESTING PURPOSES ONLY!
+/*
 bot.onText(/\/sendall/, (msg, match) => sendAll())
+*/
 
 // FOR TESTING PURPOSES ONLY!
+/*
 bot.onText(/\/debug/, async (msg, match) => {
 	const chatId = msg.chat.id;
 	const subs = await retrieveSubscribersList()
 	bot.sendMessage(chatId, `Number of subscribers: ${subs.length}`)	
 })
+*/
 
 bot.onText(/\/sub/, (msg, match) => {
 	const chatId = msg.chat.id;
@@ -300,9 +307,12 @@ bot.onText(/\/about/, (msg, match) => {
 	const chatId = msg.chat.id;
 
 	bot.sendMessage(chatId, 
-`COVID-19 bot by PicciMario <mario.piccinelli@gmail.com>. 
-Daily updates of new cases in Italy, every day at about 5pm italian time (if subscribed). 
-See https://github.com/PicciMario/covidbot for technical details.`
+`<b>Italian Daily COVID Bot</b> v.${VERSION}
+Subscribe for daily updates of new cases in Italy, every day at about 5pm italian time. 
+<i>See https://github.com/PicciMario/covidbot for technical details.</i>`,
+		{
+			parse_mode: 'HTML'
+		}
 	);
 
 })
