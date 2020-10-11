@@ -41,6 +41,8 @@ bot.on("polling_error", (err) => log.error("Telegram polling error", err));
 const redisHost = process.env.REDIS_HOST || 'localhost';
 const redisPort = process.env.REDIS_PORT || 6379;
 
+const SECONDS_REDIS_CONN_RETRY = 10;
+
 // REDIS connection retry strategy
 function _redis_retry_strategy({error, total_retry_time, attempt}){
 
@@ -56,18 +58,34 @@ function _redis_retry_strategy({error, total_retry_time, attempt}){
 		process.exit()
 	}
 
-	log.debug(`Unable to reach Redis instance on ${redisHost}:${redisPort}, will retry...`);
+	log.debug(`Unable to reach Redis instance on ${redisHost}:${redisPort}, will retry in ${SECONDS_REDIS_CONN_RETRY} seconds...`);
 	
 	// Next attempt in X ms.
-	return 10000; 
+	return SECONDS_REDIS_CONN_RETRY*1000; 
 
 }
 
 // Init connection
+log.debug(`Attempting Redis connection on ${redisHost}:${redisPort}...`);
 const redisclient = Redis.createClient({
 	host: redisHost,
 	port: redisPort,
 	retry_strategy: _redis_retry_strategy
+});
+
+redisclient.on("connect", function(error) {
+
+	log.debug("...Redis connection established.");
+
+	// Initial retrieve of italian data
+	retrieveAll();
+
+	// Scheduling to retrieve updated data 
+	cron.schedule('00 17 * * *', retrieveAll);
+
+	// Scheduling to send updated data to all subscribers
+	cron.schedule('05 17 * * *', sendAll);
+
 });
 
 // ------------------------------------------------------------------------------------------------
@@ -76,7 +94,6 @@ const redisclient = Redis.createClient({
  * Retrieve all data and save it in a global variable.
  */
 function retrieveAll(){
-	log.debug('Retrieving data.')
 	log.debug('Retrieving italian nation-level data...')
 	retrieveAndamentoNazionale(data => {
 		italianData = data;
@@ -283,12 +300,3 @@ Type /about or /help to begin.`
 })
 
 // ------------------------------------------------------------------------------------------------
-
-// Initial retrieve of italian data
-retrieveAll();
-
-// Scheduling to retrieve updated data 
-cron.schedule('00 17 * * *', retrieveAll);
-
-// Scheduling to send updated data to all subscribers
-cron.schedule('05 17 * * *', sendAll);
