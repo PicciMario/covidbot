@@ -55,6 +55,16 @@ This code is far from great and is provided as a learning opportunity, both for 
 	docker-compose down
 	```
 
+# Kaspersky Internet Security and similar shit
+If you are in a working environment and you have some kind of stupid shit which is messing with your certificates and SSL connections, you could stumble on a "Error: self signed certificate in certificate chain" while trying to build a dev environment on your local machine. Apparently, you can get around that with:
+
+```
+set NODE_TLS_REJECT_UNAUTHORIZED=0
+npm install
+```
+
+I know, I know, it's basically a bad idea, but I wasted too much time on that.
+
 ---
 
 ## License

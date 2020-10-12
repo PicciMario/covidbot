@@ -165,6 +165,9 @@ function retrieveSubscribersList(){
 
 	return new Promise((resolve, reject) => {
 		redisclient.smembers(REDIS_SUBSCRIBERS, (err, subscribers) => {
+			if (err != null){
+				reject(err);
+			}
 			resolve(subscribers);
 		})
 	})
@@ -247,13 +250,19 @@ bot.onText(/\/sendall/, (msg, match) => sendAll())
 */
 
 // FOR TESTING PURPOSES ONLY!
-/*
 bot.onText(/\/debug/, async (msg, match) => {
+	
 	const chatId = msg.chat.id;
-	const subs = await retrieveSubscribersList()
-	bot.sendMessage(chatId, `Number of subscribers: ${subs.length}`)	
+
+	try{
+		const subs = await retrieveSubscribersList()
+		bot.sendMessage(chatId, `Number of subscribers: ${subs.length}`)	
+	}
+	catch (err){
+		log.error(`Error while retrieving subs list: ${err.message}`)
+	}
+
 })
-*/
 
 bot.onText(/\/sub/, (msg, match) => {
 	const chatId = msg.chat.id;
@@ -282,23 +291,23 @@ bot.onText(/\/status/, (msg, match) => {
 
 });
 
-bot.onText(/\/plot/, (msg, match) => {
+bot.onText(/\/plot/, async (msg, match) => {
 
 	const chatId = msg.chat.id;
 
 	log.debug(`Requested plot from chat id: ${chatId}`);
 
-	createAndamentoNazionaleGraph().then((buffer) => {
-		bot.sendPhoto(
-			chatId, 
-			buffer,
-			{},
-			{
-				filename: 'plot.png',
-				contentType: 'image/png'
-			}
-		)
-	});
+	const buffer = await createAndamentoNazionaleGraph();
+	
+	bot.sendPhoto(
+		chatId, 
+		buffer,
+		{},
+		{
+			filename: 'plot.png',
+			contentType: 'image/png'
+		}
+	)
 
 })
 
