@@ -10,8 +10,21 @@ import Redis from 'redis';
 // Bot version
 const VERSION = '1.0.0';
 
-// Init logger
-const log = new Logger("index.js")
+// REDIS set holding the subscribers list (as list of chat id)
+const REDIS_SUBSCRIBERS = 'subscribers'
+
+// Prefix to REDIS hashes holding data for each subscriber (PREFIX + chatId)
+const REDIS_SUB_PREFIX = 'sub:'
+
+// Key holding the formatted timestamp of the last valid dataset retrieved
+const REDIS_LASTVALIDDATE = 'last'
+// Date format for the REDIS_LASTVALIDDATE Redis key content.
+const REDIS_LASTVALIDDATE_FORMAT = 'DD MMM YYYY HH:mm:SS';
+
+// Actual timestamp of the last successful retrieval operation
+const REDIS_LASTRETRIEVETIMESTAMP = 'last_timestamp'
+
+// ------------------------------------------------------------------------------------------------
 
 // Init dotenv (to access .env variables)
 dotenv.config()
@@ -20,10 +33,15 @@ dotenv.config()
 // (mime type warning even when the type is explicitly set)
 process.env.NTBA_FIX_350 = true;
 
+// Init logger
+const log = new Logger("index.js")
+
 /**
  * Data retrieved stored as local variable.
  */
 let italianData = []
+
+let scheduledTask = null;
 
 // Initialize Telegram Bot ------------------------------------------------------------------------
 
@@ -78,36 +96,62 @@ const redisclient = Redis.createClient({
 });
 
 // Callback after successful redis connection
-redisclient.on("connect", function() {
-
+redisclient.on("connect", async function() {
 	log.debug("...Redis connection established.");
-
-	// Initial retrieve of italian data
-	initialRetrieve();
-
-	// Scheduling to send updated data to all subscribers
-	cron.schedule('05 17 * * *', sendAll);
-
+	main();
 });
 
 // ------------------------------------------------------------------------------------------------
 
 /**
- * Retrieve all data and save it in a global variable.
+ * Application entry point (called after Redis connection established).
  */
-async function initialRetrieve(){	
+async function main(){
 
 	log.debug('Retrieving italian nation-level data...')
 
 	try{
-		const data = await retrieveDailyData()
-		log.debug(`...italian nation-level data done (${data.length} records).`)
-		italianData = data;
+		italianData = await retrieveDailyData()
+		log.debug(`...italian nation-level data done (${italianData.length} records).`)
 	}
 	catch (err){
+		italianData = []
 		log.err(`Error: ${err.message}`)
 	}
+
+	const lastElement = italianData[italianData.length-1];
+	if (lastElement){
+		await setLastValidDate(lastElement['data'].format(REDIS_LASTVALIDDATE_FORMAT));
+		await setLastRetrieveTimestamp(moment().format('DD/MMM/YYYY HH:mm:SS'));
+	}
+
+	// Everyday at 5pm, start a task which will try to send to subscribers until
+	// it is able to do so (because it retrieved new data).
+	cron.schedule('00 17 * * *', () => {
+
+		log.debug(`Starting scheduled task...`);
 	
+		// Delete existing task
+		if (scheduledTask != null){
+			try{
+				scheduledTask.destroy();
+				scheduledTask = null;
+			}
+			catch (err){
+				log.debug(`Error while killing scheduled task: ${err.message}`)
+			}
+		}
+
+		scheduledTask = cron.schedule('*/2 * * * *', async () => {
+			const done = await sendAll();
+			if (done){
+				scheduledTask.destroy();
+				scheduledTask = null;
+			}
+		})
+
+	})
+
 }
 
 /**
@@ -124,33 +168,58 @@ async function sendAll() {
 			return;
 		}
 		else {
-			log.debug(`Sending plot to ${subscribers.length} subscribers.`)
+			log.debug(`Checking whether to send plot to ${subscribers.length} subscribers.`)
 		}
 
 		const data = await retrieveDailyData()
-		italianData = data;	
-		log.debug(`Retrieved new data (${data.length} records).`);
 
-		const buffer = await createAndamentoNazionaleGraph()
+		const lastRetrievedElement = data[data.length-1];
+		if (lastRetrievedElement){
 
-		subscribers.forEach(chatId => {
-			bot.sendPhoto(
-				chatId, 
-				buffer,
-				{},
-				{
-					filename: 'plot.png',
-					contentType: 'image/png'
-				}
-			)
-		})
+			const lastElementsDate = lastRetrievedElement['data'].format(REDIS_LASTVALIDDATE_FORMAT);
+			const storedLastValidDate = await getLastValidDate();
+			
+			if (lastElementsDate !== storedLastValidDate){
 
-		log.debug('Updated plots sent to all subscribers.')
+				log.debug(`Sending updated plot to ${subscribers.length} subscribers.`)
+
+				await setLastValidDate(lastElementsDate);
+
+				italianData = data;	
+				log.debug(`Retrieved new data (${data.length} records).`);
+				await setLastRetrieveTimestamp(moment().format('DD/MMM/YYYY HH:mm:SS'));
+		
+				const buffer = await createAndamentoNazionaleGraph()
+		
+				subscribers.forEach(chatId => {
+					bot.sendPhoto(
+						chatId, 
+						buffer,
+						{},
+						{
+							filename: 'plot.png',
+							contentType: 'image/png'
+						}
+					)
+				})
+		
+				log.debug('Updated plots sent to all subscribers.')	
+				
+				return true;
+
+			}
+			else {
+				log.debug(`Retrieved data showing the same date as previously stored ${storedLastValidDate}, skipping transmission of stale data.`)
+			}
+
+		}
 
 	}
 	catch(err) {
 		log.err(`Unexpected error during sendAll(): ${err.message}`);
 	}
+
+	return false;
 
 }
 
@@ -172,6 +241,50 @@ function retrieveSubscribersList(){
 		})
 	})
 
+}
+
+// -----
+
+function getLastValidDate(){
+	return getRedisKey(REDIS_LASTVALIDDATE)
+}
+
+function setLastValidDate(value){
+	return setRedisKey(REDIS_LASTVALIDDATE, value)
+}
+
+// -----
+
+function getLastRetrieveTimestamp(){
+	return getRedisKey(REDIS_LASTRETRIEVETIMESTAMP)
+}
+
+function setLastRetrieveTimestamp(value){
+	return setRedisKey(REDIS_LASTRETRIEVETIMESTAMP, value)
+}
+
+// -----
+
+function getRedisKey(key){
+	return new Promise((resolve, reject) => {
+		redisclient.get(key, (err, value) => {
+			if (err != null){
+				reject(err);
+			}
+			resolve(value);
+		})		
+	})
+}
+
+function setRedisKey(key, value){
+	return new Promise((resolve, reject) => {
+		redisclient.set(key, value, (err) => {
+			if (err != null){
+				reject(err);
+			}
+			resolve();
+		})		
+	})
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -216,11 +329,6 @@ function createAndamentoNazionaleGraph() {
 
 // ------------------------------------------------------------------------------------------------
 
-// REDIS set holding the subscribers list (as list of chat id)
-const REDIS_SUBSCRIBERS = 'subscribers'
-// Prefix to REDIS hashes holding data for each subscriber (PREFIX + chatId)
-const REDIS_SUB_PREFIX = 'sub:'
-
 function addToSubscribersList(chatId){
 	redisclient.sadd(REDIS_SUBSCRIBERS, chatId, (err, res) => log.debug(`Adding new subscribe ${chatId} to db: ${res} (error: ${err})`))
 	redisclient.hset(REDIS_SUB_PREFIX + chatId, 'timestamp', moment().format("DD MMM YYYY HH:mm:SS").toString())
@@ -256,10 +364,12 @@ bot.onText(/\/debug/, async (msg, match) => {
 
 	try{
 		const subs = await retrieveSubscribersList()
-		bot.sendMessage(chatId, `Number of subscribers: ${subs.length}`)	
+		const lastValidDate = await getLastValidDate()
+		const lastRetrieval = await getLastRetrieveTimestamp()
+		bot.sendMessage(chatId, `Number of subscribers: ${subs.length}; Last valid date: ${lastValidDate} (retrieved on ${lastRetrieval})`)	
 	}
 	catch (err){
-		log.error(`Error while retrieving subs list: ${err.message}`)
+		log.error(`Error while retrieving data: ${err.message}`)
 	}
 
 })
