@@ -5,21 +5,22 @@
 
 Play with it, just look for [@italiandailycovidbot](https://t.me/italiandailycovidbot) on Telegram (if my home server is still up, no promises here :-) ).
 
-Simple Telegram bot written in NodeJS. Retrieves italian state-level COVID-19 infection numbers (new daily infections) from the Italian Civil Protection [GitHub repository](https://github.com/pcm-dpc/COVID-19); provides upon request a plot of the last 3 months values. Also, an user can subscribe and receive updates every evening at 17.05 (italian ministry of health publishes daily data at 5pm).
+Simple Telegram bot written in NodeJS. Retrieves italian state-level COVID-19 infection numbers from the Italian Civil Protection [GitHub repository](https://github.com/pcm-dpc/COVID-19) and provides upon request a plot of the last 3 months values. Also, an user can subscribe and receive updates every evening at about 5pm (new data is published daily around that time).
 
 ![Sample plot](/sampleplot.jpg)
 
-Supported commands:
-- /sub - Subscribe to daily COVID-19 updates
-- /unsub - Unsubscribe
-- /status - Subscription status
-- /plot - Request actual situation plot
-- /about - About
-- /help - Commands list
+## Supported commands
+
+- **/sub** - Subscribe to daily COVID-19 updates
+- **/unsub** - Unsubscribe
+- **/status** - Subscription status
+- **/plot** - Request actual situation plot
+- **/about** - About
+- **/help** - Commands list
 
 ## Technical details
 
-The code implements a simple bot by leveraging the *node-telegram-bot-api* library. Upon startup, it downloads and parses COVID-19 data from the Italian Ministry of Health website; then, upon */plot* request, it creates a plot and sends it to the requestor as a PNG image.
+The code implements a simple bot by leveraging the *node-telegram-bot-api* library. Upon startup, it downloads and parses COVID-19 data from the Italian Civil Protection [GitHub repository](https://github.com/pcm-dpc/COVID-19); then, upon **/plot** request, it creates a plot and sends it to the requestor as a PNG image.
 
 There is also a simplified subscription feature, by which an user can request to be subscribed to daily updates (either in a private chat with the bot or inside any other chat you've added the bot to). The bot will store the chat id of the request (in a REDIS server). Every day at around 5pm (italian time) new COVID-19 data is retrieveda and then the plot function is invoked for all the subscribers, who will subsequently receive the new plot.
 
@@ -56,14 +57,13 @@ This code is far from great and is provided as a learning opportunity, both for 
 	```
 
 # Kaspersky Internet Security and similar shit
-If you are in a working environment and you have some kind of stupid shit which is messing with your certificates and SSL connections, you could stumble on a "Error: self signed certificate in certificate chain" while trying to build a dev environment on your local machine. Apparently, you can get around that with:
+If you are in a working environment and you have some kind of stupid shit which is messing with your certificates and SSL connections, you could stumble on a "Error: self signed certificate in certificate chain" while trying to build/run local machine. Apparently, you can get around that with:
 
 ```
 set NODE_TLS_REJECT_UNAUTHORIZED=0
-npm install
 ```
 
-I know, I know, it's basically a bad idea, but I wasted too much time on that.
+I know, I know, it's basically a **VERY BAD PRACTICE**, but I wasted too much time on that. Look that up and make your choice.
 
 ---
 
