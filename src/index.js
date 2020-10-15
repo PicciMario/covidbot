@@ -1,11 +1,11 @@
-import {retrieveDailyData} from './datarecovery'
 import cron from 'node-cron';
 import telegrambot from 'node-telegram-bot-api';
 import moment from 'moment'
 import Logger from './logger'
 import dotenv from 'dotenv'
 import Redis from 'redis';
-import buildPlot from './plotter';
+import {retrieveDailyData} from './datarecovery'
+import {buildPlot, createDailyDigest} from './plotter';
 
 // Bot version
 const VERSION = '1.2.0';
@@ -29,6 +29,10 @@ const REDIS_LASTRETRIEVETIMESTAMP = 'last_timestamp'
 // Init dotenv (to access .env variables)
 dotenv.config()
 
+// Check if development mode
+// (add NODE_ENV=development in your .env file)
+const DEVELOPMENT = process.env.NODE_ENV  === 'development'
+
 // To disable a deprecation warning in the sendPhoto bot function
 // (mime type warning even when the type is explicitly set)
 process.env.NTBA_FIX_350 = true;
@@ -42,6 +46,12 @@ const log = new Logger("index.js")
 let italianData = []
 
 let scheduledTask = null;
+
+// Startup console messages -----------------------------------------------------------------------
+
+log.info(`COVIDBOT v. ${VERSION}`)
+
+if (DEVELOPMENT) log.info(`Running in DEVELOPMENT mode!`)
 
 // Initialize Telegram Bot ------------------------------------------------------------------------
 
@@ -308,14 +318,15 @@ sub - Subscribe to daily COVID-19 updates
 unsub - Unsubscribe
 status - Subscription status
 plot - Request actual situation plot
+digest - Riassunto giornaliero
 about - About this bot
 help - Commands list
 */
 
-// FOR TESTING PURPOSES ONLY!
-bot.onText(/\/sendall/, (msg, match) => sendAll())
+if (DEVELOPMENT){
+	bot.onText(/\/sendall/, (msg, match) => sendAll())
+}
 
-// FOR TESTING PURPOSES ONLY!
 bot.onText(/\/debug/, async (msg, match) => {
 	
 	const chatId = msg.chat.id;
@@ -331,6 +342,17 @@ bot.onText(/\/debug/, async (msg, match) => {
 	}
 
 })
+
+bot.onText(/\/digest/, (msg, match) => {
+	const chatId = msg.chat.id;
+	bot.sendMessage(
+		chatId, 
+		createDailyDigest(italianData),
+		{
+			parse_mode: 'HTML'
+		}
+	)
+});
 
 bot.onText(/\/sub/, (msg, match) => {
 	const chatId = msg.chat.id;
@@ -373,7 +395,8 @@ bot.onText(/\/plot/, async (msg, match) => {
 		{},
 		{
 			filename: 'plot.png',
-			contentType: 'image/png'
+			contentType: 'image/png',
+			text: `Maggiori informazioni con il comando /digest`,
 		}
 	)
 
@@ -405,6 +428,7 @@ Commands list:
   /unsub - Unsubscribe
   /status - Subscription status
   /plot - Request actual situation plot
+  /digest - Daily digest
   /about - About this bot
   /help - This list`
 	);

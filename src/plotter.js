@@ -3,6 +3,17 @@ import { CanvasRenderService } from 'chartjs-node-canvas';
 
 // ------------------------------------------------------------------------------------------------
 
+const KEY_NUOVI_POSITIVI = 'nuovi_positivi';
+const KEY_DIMESSI = 'dimessi_guariti';
+const KEY_DECEDUTI = 'deceduti';
+const KEY_TOTALE_POSITIVI = 'totale_positivi';
+const KEY_TERAPIA_INTENSIVA = 'terapia_intensiva';
+const KEY_RICOVERATI = 'ricoverati_con_sintomi';
+const KEY_VARIAZIONE_POSITIVI = 'variazione_totale_positivi';
+const KEY_TAMPONI = 'tamponi';
+
+// ------------------------------------------------------------------------------------------------
+
 function _sliceDataset(dataset, maxItems = 120){
 
 	const num = Math.min(maxItems, dataset.length);
@@ -43,6 +54,11 @@ function deltaValue(dataset, key){
 
 }
 
+function lastValueWithSign(dataset, key){
+    const delta = lastValue(dataset, key);
+    return delta >= 0 ? `+${delta}` : `-${delta}`
+}
+
 function deltaValueWithSign(dataset, key){
     const delta = deltaValue(dataset, key);
     return delta >= 0 ? `+${delta}` : `-${delta}`
@@ -63,12 +79,36 @@ function lastDateAsString(dataset, key='data'){
 
 // ------------------------------------------------------------------------------------------------
 
+export function createDailyDigest(dataset){
+
+	const lastDate = lastDateAsString(dataset);
+
+	const nuoviPOS = lastValue(dataset, KEY_NUOVI_POSITIVI);
+	const nuoviDimessi = deltaValue(dataset, KEY_DIMESSI);
+	const nuoviDeceduti = deltaValue(dataset, KEY_DECEDUTI);
+	const lastTotPos = lastValue(dataset, KEY_TOTALE_POSITIVI);
+	const deltaTotPos = lastValueWithSign(dataset, KEY_VARIAZIONE_POSITIVI);
+    const lastTI = lastValue(dataset, KEY_TERAPIA_INTENSIVA);
+    const deltaTI = deltaValueWithSign(dataset, KEY_TERAPIA_INTENSIVA);
+    const lastRIC = lastValue(dataset, KEY_RICOVERATI);
+	const deltaRIC = deltaValueWithSign(dataset, KEY_RICOVERATI);
+	const totTamp = lastValue(dataset, KEY_TAMPONI);
+	
+	let text = `<b>Aggiornamento del ${lastDate}</b>`
+	text += `\nCi sono stati <b>${nuoviPOS}</b> nuovi casi, <b>${nuoviDimessi}</b> guariti e <b>${nuoviDeceduti}</b> deceduti, per un totale di <b>${lastTotPos}</b> attualmente positivi (<b>${deltaTotPos}</b> rispetto a ieri).`;
+	text += `\nCi sono <b>${lastRIC}</b> persone ricoverate in ospedale (<b>${deltaRIC}</b> rispetto al giorno precedente) e <b>${lastTI}</b> persone in terapia intensiva (<b>${deltaTI}</b> rispetto al giorno precedente).`;
+	text += `\nSono stati svolti <b>${totTamp}</b> tamponi.`;
+
+	return text;
+
+}
+
+// ------------------------------------------------------------------------------------------------
+
 /**
  * Creates italian nation-level plot. Returns a buffer with the png image of the plot itself.
  */
 function _createTopPlot(fullDataset) {
-
-    const KEY_NUOVI_POSITIVI = 'nuovi_positivi';
 
     const dataset = _sliceDataset(fullDataset)
 
@@ -110,9 +150,6 @@ function _createTopPlot(fullDataset) {
  * Creates italian nation-level plot. Returns a buffer with the png image of the plot itself.
  */
 function _createBottomPlot(fullDataset) {
-
-    const KEY_TERAPIA_INTENSIVA = 'terapia_intensiva';
-    const KEY_RICOVERATI = 'ricoverati_con_sintomi';
 
     const dataset = _sliceDataset(fullDataset)
     
@@ -167,7 +204,7 @@ function _createBottomPlot(fullDataset) {
 
 // ------------------------------------------------------------------------------------------------
 
-async function buildPlot(dataset){
+export async function buildPlot(dataset){
 
 	const buffer = await _createTopPlot(dataset);
 	const buffer2 = await _createBottomPlot(dataset);
@@ -190,7 +227,3 @@ async function buildPlot(dataset){
 	return imageBuffer;
 
 }
-
-// ------------------------------------------------------------------------------------------------
-
-export default buildPlot;
