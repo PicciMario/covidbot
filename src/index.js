@@ -6,6 +6,7 @@ import moment from 'moment'
 import Logger from './logger'
 import dotenv from 'dotenv'
 import Redis from 'redis';
+import sharp from 'sharp';
 
 // Bot version
 const VERSION = '1.1.0';
@@ -189,7 +190,7 @@ async function sendAll() {
 				log.debug(`Retrieved new data (${data.length} records).`);
 				await setLastRetrieveTimestamp(moment().format('DD/MMM/YYYY HH:mm:SS'));
 		
-				const buffer = await createAndamentoNazionaleGraph()
+				const buffer = await buildPlot(italianData)
 		
 				subscribers.forEach(chatId => {
 					bot.sendPhoto(
@@ -292,11 +293,11 @@ function setRedisKey(key, value){
 /**
  * Creates italian nation-level plot. Returns a buffer with the png image of the plot itself.
  */
-function createAndamentoNazionaleGraph() {
+function createTopPlot(dataset) {
 
-	const num = Math.min(120, italianData.length);
-	const elements = italianData.slice(italianData.length-num, italianData.length);
-	const lastElement = italianData[italianData.length-1]
+	const num = Math.min(120, dataset.length);
+	const elements = dataset.slice(dataset.length-num, dataset.length);
+	const lastElement = dataset[dataset.length-1]
 
     const configuration = {
         type: 'bar',
@@ -304,7 +305,7 @@ function createAndamentoNazionaleGraph() {
             labels: elements.map(element => element['data'].format('DD MMM')),
             datasets: [
                 {
-					label: "Nuovi positivi (+" + lastElement['nuovi_positivi'] + ")",
+					label: `Nuovi positivi (${lastElement['nuovi_positivi']})`,
 					backgroundColor: 'red',
 					borderColor: 'red',
 					data: elements.map(element => element['nuovi_positivi'])
@@ -314,17 +315,95 @@ function createAndamentoNazionaleGraph() {
         options: {
 			title: {
 				display: true,
-				text: 'Situazione in italia al ' + lastElement['data'].format('DD MMM YYYY')
+				text: `Situazione in italia al ${lastElement['data'].format('DD/MM/YYYY')} (+${lastElement['nuovi_positivi']} nuovi casi)`
 			},
 			legend: {
-				position: 'bottom'
+				position: 'bottom',
+				display: false
 			}
         }
     };
 
-    const canvasRenderService = new CanvasRenderService(500, 300);
+    const canvasRenderService = new CanvasRenderService(500, 250);
 	return canvasRenderService.renderToBuffer(configuration, 'image/png');
 	
+}
+
+/**
+ * Creates italian nation-level plot. Returns a buffer with the png image of the plot itself.
+ */
+function createBottomPlot(dataset) {
+
+	const num = Math.min(120, dataset.length);
+	const elements = dataset.slice(dataset.length-num, dataset.length);
+	const lastElement = dataset[dataset.length-1]
+
+    const configuration = {
+        type: 'bar',
+        data: {
+			labels: elements.map(element => element['data'].format('DD MMM')),
+            datasets: [
+                {
+					label: `Posti occupati in terapia intensiva (ad oggi: ${lastElement['terapia_intensiva']})`,
+					backgroundColor: 'darkred',
+					borderColor: 'darkred',
+					data: elements.map(element => element['terapia_intensiva'])
+				},           
+				{
+					label: `Ricoverati con sintomi (ad oggi: ${lastElement['ricoverati_con_sintomi']})`,
+					backgroundColor: 'darkred',
+					borderColor: 'darkred',
+					data: elements.map(element => element['ricoverati_con_sintomi'])
+				}
+            ]
+		},
+        options: {
+			title: {
+				display: true,
+				text: `Situazione ospedali ad oggi. Ricoverati ${lastElement['ricoverati_con_sintomi']}, terapia intensiva ${lastElement['terapia_intensiva']}.`
+			},			
+			legend: {
+				position: 'bottom',
+				display: false
+			},
+			scales: {
+				xAxes: [{
+					display: false,
+					ticks: {
+						display: false
+					}
+				}]
+			}		
+        }		
+    };
+
+    const canvasRenderService = new CanvasRenderService(500, 150);
+	return canvasRenderService.renderToBuffer(configuration, 'image/png');
+	
+}
+
+async function buildPlot(dataset){
+
+	const buffer = await createTopPlot(dataset);
+	const buffer2 = await createBottomPlot(dataset);
+
+	const imageBuffer = await sharp({
+			create: {
+				width: 520,
+				height: 400,
+				channels: 3,
+				background: { r: 245, g: 245, b: 245}			
+			}
+		})
+		.composite([
+			{ input: buffer, gravity: 'north' }, 
+			{ input: buffer2, gravity: 'south' }
+		])
+		.png()
+		.toBuffer();
+
+	return imageBuffer;
+
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -353,9 +432,7 @@ help - Commands list
 */
 
 // FOR TESTING PURPOSES ONLY!
-/*
 bot.onText(/\/sendall/, (msg, match) => sendAll())
-*/
 
 // FOR TESTING PURPOSES ONLY!
 bot.onText(/\/debug/, async (msg, match) => {
@@ -407,11 +484,11 @@ bot.onText(/\/plot/, async (msg, match) => {
 
 	log.debug(`Requested plot from chat id: ${chatId}`);
 
-	const buffer = await createAndamentoNazionaleGraph();
+	const imageBuffer = await buildPlot(italianData);
 	
 	bot.sendPhoto(
 		chatId, 
-		buffer,
+		imageBuffer,
 		{},
 		{
 			filename: 'plot.png',
