@@ -7,9 +7,57 @@ function _sliceDataset(dataset, maxItems = 120){
 
 	const num = Math.min(maxItems, dataset.length);
 	const elements = dataset.slice(dataset.length-num, dataset.length);
-    const lastElement = dataset[dataset.length-1]
     
-    return {elements, lastElement}
+    return elements
+
+}
+
+function lastValue(dataset, key){
+
+    if (dataset.length === 0) return 0;
+
+    const lastElement = dataset[dataset.length-1];
+    
+    if (lastElement){
+        return lastElement[key] || 0;
+    }
+    else {
+        return 0;
+    }
+
+}
+
+function deltaValue(dataset, key){
+
+    if (dataset.length === 0) return 0;
+
+    const lastElement = dataset[dataset.length-1];
+
+    if (dataset.length === 1){
+        return lastElement[key] || 0;
+    }
+
+    const prevElement = dataset[dataset.length-2]
+
+    return (lastElement[key] - prevElement[key])
+
+}
+
+function deltaValueWithSign(dataset, key){
+    const delta = deltaValue(dataset, key);
+    return delta >= 0 ? `+${delta}` : `-${delta}`
+}
+
+function lastDateAsString(dataset, key='data'){
+
+    const lastElement = dataset[dataset.length-1];
+
+    if (lastElement){
+        return lastElement[key].format('DD/MM/YYYY')
+    }
+    else {
+        return '';
+    }    
 
 }
 
@@ -18,27 +66,31 @@ function _sliceDataset(dataset, maxItems = 120){
 /**
  * Creates italian nation-level plot. Returns a buffer with the png image of the plot itself.
  */
-function _createTopPlot(dataset) {
+function _createTopPlot(fullDataset) {
 
-	const {elements, lastElement} = _sliceDataset(dataset)
+    const KEY_NUOVI_POSITIVI = 'nuovi_positivi';
+
+    const dataset = _sliceDataset(fullDataset)
+
+    const nuoviPOS = lastValue(dataset, KEY_NUOVI_POSITIVI);
 
     const configuration = {
         type: 'bar',
         data: {
-            labels: elements.map(element => element['data'].format('DD MMM')),
+            labels: dataset.map(element => element['data'].format('DD MMM')),
             datasets: [
                 {
-					label: `Nuovi positivi (${lastElement['nuovi_positivi']})`,
+					label: `Nuovi positivi (${nuoviPOS})`,
 					backgroundColor: 'red',
 					borderColor: 'red',
-					data: elements.map(element => element['nuovi_positivi'])
+					data: dataset.map(element => element[KEY_NUOVI_POSITIVI])
 				},
             ]
         },
         options: {
 			title: {
 				display: true,
-				text: `Situazione in italia al ${lastElement['data'].format('DD/MM/YYYY')} (+${lastElement['nuovi_positivi']} nuovi casi)`
+				text: `Andamento nuovi casi in italia al ${lastDateAsString(dataset)} (+${nuoviPOS})`
 			},
 			legend: {
 				position: 'bottom',
@@ -57,33 +109,41 @@ function _createTopPlot(dataset) {
 /**
  * Creates italian nation-level plot. Returns a buffer with the png image of the plot itself.
  */
-function _createBottomPlot(dataset) {
+function _createBottomPlot(fullDataset) {
 
-	const {elements, lastElement} = _sliceDataset(dataset)
+    const KEY_TERAPIA_INTENSIVA = 'terapia_intensiva';
+    const KEY_RICOVERATI = 'ricoverati_con_sintomi';
+
+    const dataset = _sliceDataset(fullDataset)
+    
+    const lastTI = lastValue(dataset, KEY_TERAPIA_INTENSIVA);
+    const deltaTI = deltaValueWithSign(dataset, KEY_TERAPIA_INTENSIVA);
+    const lastRIC = lastValue(dataset, KEY_RICOVERATI);
+    const deltaRIC = deltaValueWithSign(dataset, KEY_RICOVERATI);
 
     const configuration = {
         type: 'bar',
         data: {
-			labels: elements.map(element => element['data'].format('DD MMM')),
+			labels: dataset.map(element => element['data'].format('DD MMM')),
             datasets: [
                 {
-					label: `Posti occupati in terapia intensiva (ad oggi: ${lastElement['terapia_intensiva']})`,
+					label: `Posti occupati in terapia intensiva (ad oggi: ${lastTI})`,
 					backgroundColor: 'darkred',
 					borderColor: 'darkred',
-					data: elements.map(element => element['terapia_intensiva'])
+					data: dataset.map(element => element[KEY_TERAPIA_INTENSIVA])
 				},           
 				{
-					label: `Ricoverati con sintomi (ad oggi: ${lastElement['ricoverati_con_sintomi']})`,
+					label: `Ricoverati con sintomi (ad oggi: ${lastRIC})`,
 					backgroundColor: 'darkred',
 					borderColor: 'darkred',
-					data: elements.map(element => element['ricoverati_con_sintomi'])
+					data: dataset.map(element => element[KEY_RICOVERATI])
 				}
             ]
 		},
         options: {
 			title: {
 				display: true,
-				text: `Situazione ospedali ad oggi. Ricoverati ${lastElement['ricoverati_con_sintomi']}, terapia intensiva ${lastElement['terapia_intensiva']}.`
+				text: `Situazione ospedali. Ricoverati ${lastRIC} (${deltaRIC}), terapia intensiva ${lastTI} (${deltaTI}).`
 			},			
 			legend: {
 				position: 'bottom',
