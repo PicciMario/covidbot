@@ -8,7 +8,7 @@ import Redis from 'redis';
 import buildPlot from './plotter';
 
 // Bot version
-const VERSION = '1.1.0';
+const VERSION = '1.2.0';
 
 // REDIS set holding the subscribers list (as list of chat id)
 const REDIS_SUBSCRIBERS = 'subscribers'
