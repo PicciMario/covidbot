@@ -265,16 +265,6 @@ function setLastRetrieveTimestamp(value){
 
 // ------------------------------------------------------------------------------------------------
 
-/*
-sub - Subscribe to daily COVID-19 updates
-unsub - Unsubscribe
-status - Subscription status
-plot - Request actual situation plot
-digest - Riassunto giornaliero
-about - About this bot
-help - Commands list
-*/
-
 if (DEVELOPMENT){
 	bot.onText(/\/sendall/, (msg, match) => sendAll(true))
 }
