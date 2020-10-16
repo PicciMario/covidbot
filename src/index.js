@@ -7,6 +7,7 @@ import Redis from 'redis';
 import {retrieveDailyData} from './datarecovery'
 import {buildPlot, createDailyDigest} from './plotter';
 import * as redislib from './redislib';
+import * as messages from './messages';
 
 // Bot version
 const VERSION = '1.3.0';
@@ -312,7 +313,7 @@ bot.onText(/\/sub/, async (msg, match) => {
 	log.debug(`Adding new subscribe ${chatId} to db...`);
 	await redislib.sadd(redisclient, REDIS_SUBSCRIBERS, chatId);
 	await redislib.hset(redisclient, REDIS_SUB_PREFIX + chatId, 'timestamp', moment().format("DD MMM YYYY HH:mm:SS").toString());
-	bot.sendMessage(chatId, "Subscription requested (check /status for current situation, might take a while).");
+	bot.sendMessage(chatId, messages.subRequested());
 });
 
 bot.onText(/\/unsub/, async (msg, match) => {
@@ -320,7 +321,7 @@ bot.onText(/\/unsub/, async (msg, match) => {
 	log.debug(`Removing subscription of ${chatId} from db...`);
 	await redislib.srem(redisclient, REDIS_SUBSCRIBERS, chatId);
 	await redislib.del(redisclient, REDIS_SUB_PREFIX + chatId);
-	bot.sendMessage(chatId, "Cancellation requested (check /status for current situation, might take a while).");
+	bot.sendMessage(chatId, messages.cancRequested());
 });
 
 bot.onText(/\/status/, async (msg, match) => {
@@ -331,10 +332,10 @@ bot.onText(/\/status/, async (msg, match) => {
 
 	if (isMember === 1){
 		const subSince = await redislib.hget(redisclient, REDIS_SUB_PREFIX + chatId, 'timestamp');
-		bot.sendMessage(chatId, `Subscribed since ${subSince}`)
+		bot.sendMessage(chatId, messages.isSubscribed(subSince))
 	}
 	else {
-		bot.sendMessage(chatId, `Currently not subscribed`)
+		bot.sendMessage(chatId, messages.isNotSubscribed())
 	}
 
 });
@@ -351,7 +352,7 @@ bot.onText(/\/plot/, async (msg, match) => {
 		chatId, 
 		imageBuffer,
 		{
-			caption: `Maggiori informazioni sulla situazione odierna: /digest`
+			caption: messages.photoCaption()
 		},
 		{
 			filename: 'plot.png',
@@ -361,35 +362,17 @@ bot.onText(/\/plot/, async (msg, match) => {
 
 })
 
-const aboutMessage = 
-`<b>Italian Daily COVID Bot</b> v.${VERSION}
-Subscribe for daily updates of new cases in Italy, every day at about 5pm italian time. Or request an immediate update with latest data. Ask /help for the command list. 
-\n<i>See https://github.com/PicciMario/covidbot for technical details.</i>`
-
-const helpMessage = 
-`<b>Italian Daily COVID Bot</b> v.${VERSION}
-Subscribe /sub for daily updates of new cases in Italy, every day at about 5pm italian time. Or ask for an immediate update with /plot or /digest.
-\nCommands list:
-  /sub - Subscribe to daily COVID-19 updates
-  /unsub - Unsubscribe
-  /status - Subscription status
-  /plot - Request actual situation plot
-  /digest - Daily digest
-  /about - About this bot
-  /help - This list`
-
 bot.onText(/\/about/, (msg, match) => {
-	bot.sendMessage(msg.chat.id, aboutMessage, {parse_mode: 'HTML'});
+	bot.sendMessage(msg.chat.id, messages.aboutMessage(VERSION), {parse_mode: 'HTML'});
 })
 
 bot.onText(/\/start/, (msg, match) => {
-	bot.sendMessage(msg.chat.id, aboutMessage, {parse_mode: 'HTML'});
+	bot.sendMessage(msg.chat.id, messages.aboutMessage(VERSION), {parse_mode: 'HTML'});
 })
 
 bot.onText(/\/help/, (msg, match) => {
-	bot.sendMessage(msg.chat.id, helpMessage, {parse_mode: 'HTML'});
+	bot.sendMessage(msg.chat.id, messages.helpMessage(VERSION), {parse_mode: 'HTML'});
 })
-
-
-
-// ------------------------------------------------------------------------------------------------
+bot.onText(/\/aiuto/, (msg, match) => {
+	bot.sendMessage(msg.chat.id, messages.helpMessage(VERSION), {parse_mode: 'HTML'});
+})
