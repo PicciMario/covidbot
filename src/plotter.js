@@ -1,5 +1,26 @@
 import sharp from 'sharp';
 import { CanvasRenderService } from 'chartjs-node-canvas';
+import numeral from 'numeral';
+
+// numeral configuration  -------------------------------------------------------------------------
+
+numeral.register('locale', 'it', {
+    delimiters: {
+        thousands: '\'',
+        decimal: ','
+    },
+    abbreviations: {
+        thousand: 'k',
+        million: 'm',
+        billion: 'b',
+        trillion: 't'
+    },
+    currency: {
+        symbol: '€'
+    }
+});
+
+numeral.locale('it');
 
 // ------------------------------------------------------------------------------------------------
 
@@ -11,20 +32,6 @@ const KEY_TERAPIA_INTENSIVA = 'terapia_intensiva';
 const KEY_RICOVERATI = 'ricoverati_con_sintomi';
 const KEY_VARIAZIONE_POSITIVI = 'variazione_totale_positivi';
 const KEY_TAMPONI = 'tamponi';
-
-const signedNumberFormatter = new Intl.NumberFormat(
-	'it',
-	{
-		signDisplay: 'always'
-	}
-);
-
-const numberFormatter = new Intl.NumberFormat(
-	'it',
-	{
-		signDisplay: 'auto'
-	}
-);
 
 // ------------------------------------------------------------------------------------------------
 
@@ -64,18 +71,6 @@ function _lastValue(dataset, key){
 }
 
 /**
- * Value of the key item inside the last element of the dataset.
- * Formatted as string.
- * @param {Object[]} dataset 
- * @param {string} key 
- * @returns {string}
- */
-function lastValue(dataset, key){
-	const val = _lastValue(dataset, key);
-	return numberFormatter.format(val);
-}
-
-/**
  * Difference between the values of the key item in the last and 
  * second-to-last elements of the dataset.
  * @param {Object[]} dataset 
@@ -86,16 +81,28 @@ function _deltaValue(dataset, key){
 
     if (dataset.length === 0) return 0;
 
-    const lastElement = dataset[dataset.length-1];
+	const lastElement = dataset[dataset.length-1];
 
     if (dataset.length === 1){
         return lastElement[key] || 0;
     }
 
-    const prevElement = dataset[dataset.length-2]
+	const prevElement = dataset[dataset.length-2]
 
     return (lastElement[key] - prevElement[key])
 
+}
+
+/**
+ * Value of the key item inside the last element of the dataset.
+ * Formatted as string.
+ * @param {Object[]} dataset 
+ * @param {string} key 
+ * @returns {string}
+ */
+function lastValue(dataset, key){
+	const val = _lastValue(dataset, key);
+	return numeral(val).format();
 }
 
 /**
@@ -108,7 +115,7 @@ function _deltaValue(dataset, key){
  */
 function deltaValue(dataset, key){
 	const val = _deltaValue(dataset, key);
-	return numberFormatter.format(val);
+	return numeral(val).format();
 }
 
 /**
@@ -120,7 +127,7 @@ function deltaValue(dataset, key){
  */
 function lastValueWithSign(dataset, key){
     const last = _lastValue(dataset, key);
-	return signedNumberFormatter.format(last);
+	return numeral(last).format('+0,0');
 }
 
 /**
@@ -133,7 +140,7 @@ function lastValueWithSign(dataset, key){
  */
 function deltaValueWithSign(dataset, key){
     const delta = _deltaValue(dataset, key);
-	return signedNumberFormatter.format(delta);
+	return numeral(delta).format('+0,0');
 }
 
 /**
@@ -176,11 +183,15 @@ export function createDailyDigest(dataset){
     const lastRIC = lastValue(dataset, KEY_RICOVERATI);
 	const deltaRIC = deltaValueWithSign(dataset, KEY_RICOVERATI);
 	const totTamp = lastValue(dataset, KEY_TAMPONI);
+	const deltaTamp = deltaValue(dataset, KEY_TAMPONI);
+
+	const percNum = _lastValue(dataset, KEY_NUOVI_POSITIVI) / _deltaValue(dataset, KEY_TAMPONI) * 100;
+	const perc = numeral(percNum).format('0,0.00')
 	
 	let text = `<b>Aggiornamento del ${lastDate}</b>`
-	text += `\nCi sono stati <b>${nuoviPOS}</b> nuovi casi, <b>${nuoviDimessi}</b> guariti e <b>${nuoviDeceduti}</b> deceduti, per un totale di <b>${lastTotPos}</b> attualmente positivi (<b>${deltaTotPos}</b> rispetto a ieri).`;
+	text += `\nNelle ultime 24 ore ci sono stati <b>${nuoviPOS}</b> nuovi casi di positività, <b>${nuoviDimessi}</b> guariti e <b>${nuoviDeceduti}</b> deceduti, per un totale di <b>${lastTotPos}</b> attualmente positivi (<b>${deltaTotPos}</b> rispetto a ieri).`;
 	text += `\nCi sono <b>${lastRIC}</b> persone ricoverate in ospedale (<b>${deltaRIC}</b> rispetto al giorno precedente) e <b>${lastTI}</b> persone in terapia intensiva (<b>${deltaTI}</b> rispetto al giorno precedente).`;
-	text += `\nSono stati svolti <b>${totTamp}</b> tamponi.`;
+	text += `\nSono stati svolti <b>${deltaTamp}</b> tamponi, di cui sono risultati positivi <b>${perc}%</b>.`;
 
 	return text;
 
