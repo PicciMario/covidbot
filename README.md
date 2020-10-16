@@ -15,6 +15,7 @@ Simple Telegram bot written in NodeJS. Retrieves italian state-level COVID-19 in
 - **/unsub** - Unsubscribe
 - **/status** - Subscription status
 - **/plot** - Request actual situation plot
+- **/digest** - Request daily digest
 - **/about** - About
 - **/help** - Commands list
 
@@ -34,7 +35,7 @@ This code is far from great and is provided as a learning opportunity, both for 
 
 3) Create a *.env* file copying the *.env-example* and writing your token:
 
-	```
+	```ini
 	BOT_TOKEN=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 	```
 
@@ -42,7 +43,7 @@ This code is far from great and is provided as a learning opportunity, both for 
 
 4) Then
 	
-	```
+	```java
 	docker-compose up -d
 	// If you have made some kind of update use instead:
 	// docker-compose up -d --build
@@ -57,13 +58,14 @@ This code is far from great and is provided as a learning opportunity, both for 
 	```
 
 # Kaspersky Internet Security and similar shit
-If you are in a working environment and you have some kind of stupid shit which is messing with your certificates and SSL connections, you could stumble on a "Error: self signed certificate in certificate chain" while trying to build/run local machine. Apparently, you can get around that with:
+If you are in a working environment and you have some kind of stupid shit which is messing with your certificates and SSL connections, you could stumble on a "Error: self signed certificate in certificate chain" while trying to build/run local machine. Apparently, you can get around that by disabling the certificate validation for the current session:
 
-```
+```java
+// Windows only
 set NODE_TLS_REJECT_UNAUTHORIZED=0
 ```
 
-I know, I know, it's basically a **VERY BAD PRACTICE**, but I wasted too much time on that. Look that up and make your choice.
+I know, I know, disabling security features is **BAD**, but I wasted too much time on that. Look that up and make your choice. Please don't do that in prod, but it is probably ok in dev.
 
 ---
 
