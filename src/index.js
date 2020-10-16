@@ -392,11 +392,12 @@ bot.onText(/\/plot/, async (msg, match) => {
 	bot.sendPhoto(
 		chatId, 
 		imageBuffer,
-		{},
+		{
+			caption: `Maggiori informazioni sulla situazione odierna: /digest`
+		},
 		{
 			filename: 'plot.png',
 			contentType: 'image/png',
-			text: `Maggiori informazioni con il comando /digest`,
 		}
 	)
 

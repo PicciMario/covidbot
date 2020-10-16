@@ -12,8 +12,27 @@ const KEY_RICOVERATI = 'ricoverati_con_sintomi';
 const KEY_VARIAZIONE_POSITIVI = 'variazione_totale_positivi';
 const KEY_TAMPONI = 'tamponi';
 
+const signedNumberFormatter = new Intl.NumberFormat(
+	'it',
+	{
+		signDisplay: 'always'
+	}
+);
+
+const numberFormatter = new Intl.NumberFormat(
+	'it',
+	{
+		signDisplay: 'auto'
+	}
+);
+
 // ------------------------------------------------------------------------------------------------
 
+/**
+ * Returns a new dataset with the "maxItems" last elements (if available).
+ * @param {Object[]} dataset 
+ * @param {number} [maxItems=120] - Items to slice
+ */
 function _sliceDataset(dataset, maxItems = 120){
 
 	const num = Math.min(maxItems, dataset.length);
@@ -23,7 +42,13 @@ function _sliceDataset(dataset, maxItems = 120){
 
 }
 
-function lastValue(dataset, key){
+/**
+ * Value of the key item inside the last element of the dataset.
+ * @param {Object[]} dataset 
+ * @param {string} key 
+ * @returns {number}
+ */
+function _lastValue(dataset, key){
 
     if (dataset.length === 0) return 0;
 
@@ -38,7 +63,26 @@ function lastValue(dataset, key){
 
 }
 
-function deltaValue(dataset, key){
+/**
+ * Value of the key item inside the last element of the dataset.
+ * Formatted as string.
+ * @param {Object[]} dataset 
+ * @param {string} key 
+ * @returns {string}
+ */
+function lastValue(dataset, key){
+	const val = _lastValue(dataset, key);
+	return numberFormatter.format(val);
+}
+
+/**
+ * Difference between the values of the key item in the last and 
+ * second-to-last elements of the dataset.
+ * @param {Object[]} dataset 
+ * @param {string} key 
+ * @returns {number}
+ */
+function _deltaValue(dataset, key){
 
     if (dataset.length === 0) return 0;
 
@@ -54,16 +98,50 @@ function deltaValue(dataset, key){
 
 }
 
+/**
+ * Difference between the values of the key item in the last and 
+ * second-to-last elements of the dataset.
+ * * Formatted as string.
+ * @param {Object[]} dataset 
+ * @param {string} key 
+ * @returns {string}
+ */
+function deltaValue(dataset, key){
+	const val = _deltaValue(dataset, key);
+	return numberFormatter.format(val);
+}
+
+/**
+ * Value of the key item inside the last element of the dataset.
+ * Formatted as string with explicit sign (+/-).
+ * @param {Object[]} dataset 
+ * @param {string} key 
+ * @returns {string}
+ */
 function lastValueWithSign(dataset, key){
-    const delta = lastValue(dataset, key);
-    return delta >= 0 ? `+${delta}` : `-${delta}`
+    const last = _lastValue(dataset, key);
+	return signedNumberFormatter.format(last);
 }
 
+/**
+ * Difference between the values of the key item in the last and 
+ * second-to-last elements of the dataset.
+ * Formatted as string with explicit sign (+/-).
+ * @param {Object[]} dataset 
+ * @param {string} key 
+ * @returns {string}
+ */
 function deltaValueWithSign(dataset, key){
-    const delta = deltaValue(dataset, key);
-    return delta >= 0 ? `+${delta}` : `-${delta}`
+    const delta = _deltaValue(dataset, key);
+	return signedNumberFormatter.format(delta);
 }
 
+/**
+ * Formatted date from the "key" of the last element of the dataset.
+ * @param {Object[]} dataset 
+ * @param {string} [key="data"]
+ * @returns {string}
+ */
 function lastDateAsString(dataset, key='data'){
 
     const lastElement = dataset[dataset.length-1];
@@ -79,6 +157,11 @@ function lastDateAsString(dataset, key='data'){
 
 // ------------------------------------------------------------------------------------------------
 
+/**
+ * Creates daily HTML-formatted digest message.
+ * @param {Object[]} dataset 
+ * @returns {string}
+ */
 export function createDailyDigest(dataset){
 
 	const lastDate = lastDateAsString(dataset);
@@ -106,13 +189,15 @@ export function createDailyDigest(dataset){
 // ------------------------------------------------------------------------------------------------
 
 /**
- * Creates italian nation-level plot. Returns a buffer with the png image of the plot itself.
+ * Creates histogram with daily new infections. Returns a PNG stream inside a Buffer.
+ * @param {Object[]} fullDataset
+ * @returns {Buffer}
  */
 function _createTopPlot(fullDataset) {
 
     const dataset = _sliceDataset(fullDataset)
 
-    const nuoviPOS = lastValue(dataset, KEY_NUOVI_POSITIVI);
+    const nuoviPOS = lastValueWithSign(dataset, KEY_NUOVI_POSITIVI);
 
     const configuration = {
         type: 'bar',
@@ -130,7 +215,7 @@ function _createTopPlot(fullDataset) {
         options: {
 			title: {
 				display: true,
-				text: `Andamento nuovi casi in italia al ${lastDateAsString(dataset)} (+${nuoviPOS})`
+				text: `Andamento nuovi casi in italia al ${lastDateAsString(dataset)} (${nuoviPOS})`
 			},
 			legend: {
 				position: 'bottom',
@@ -147,7 +232,9 @@ function _createTopPlot(fullDataset) {
 // ------------------------------------------------------------------------------------------------
 
 /**
- * Creates italian nation-level plot. Returns a buffer with the png image of the plot itself.
+ * Creates histogram with daily new hospitalized/intensive care numbers. Returns a PNG stream inside a Buffer.
+ * @param {Object[]} fullDataset
+ * @returns {Buffer}
  */
 function _createBottomPlot(fullDataset) {
 
@@ -204,6 +291,11 @@ function _createBottomPlot(fullDataset) {
 
 // ------------------------------------------------------------------------------------------------
 
+/**
+ * Combines the two plots into a single image. Returns a PNG Buffer.
+ * @param {Object[]} dataset
+ * @returns {Buffer}
+ */
 export async function buildPlot(dataset){
 
 	const buffer = await _createTopPlot(dataset);
