@@ -168,7 +168,7 @@ async function main(){
 /**
  * Send plot data to all subscribers.
  */
-async function sendAll() {
+async function sendAll(force=false) {
 	
 	try{
 
@@ -190,7 +190,7 @@ async function sendAll() {
 			const lastElementsDate = lastRetrievedElement['data'].format(REDIS_LASTVALIDDATE_FORMAT);
 			const storedLastValidDate = await getLastValidDate();
 			
-			if (lastElementsDate !== storedLastValidDate){
+			if (lastElementsDate !== storedLastValidDate || force === true){
 
 				log.debug(`Sending updated plot to ${subscribers.length} subscribers.`)
 
@@ -201,6 +201,7 @@ async function sendAll() {
 				await setLastRetrieveTimestamp(moment().format('DD/MMM/YYYY HH:mm:SS'));
 		
 				const buffer = await buildPlot(italianData)
+				const digest = await createDailyDigest(italianData)
 		
 				subscribers.forEach(chatId => {
 					bot.sendPhoto(
@@ -210,6 +211,13 @@ async function sendAll() {
 						{
 							filename: 'plot.png',
 							contentType: 'image/png'
+						}
+					)
+					bot.sendMessage(
+						chatId,
+						digest,
+						{
+							parse_mode: "HTML"
 						}
 					)
 				})
@@ -267,7 +275,7 @@ help - Commands list
 */
 
 if (DEVELOPMENT){
-	bot.onText(/\/sendall/, (msg, match) => sendAll())
+	bot.onText(/\/sendall/, (msg, match) => sendAll(true))
 }
 
 bot.onText(/\/debug/, async (msg, match) => {
@@ -278,7 +286,9 @@ bot.onText(/\/debug/, async (msg, match) => {
 		const subs = await redislib.smembers(redisclient, REDIS_SUBSCRIBERS)
 		const lastValidDate = await getLastValidDate()
 		const lastRetrieval = await getLastRetrieveTimestamp()
-		bot.sendMessage(chatId, `Number of subscribers: ${subs.length}; Last valid date: ${lastValidDate} (retrieved on ${lastRetrieval})`)	
+		let message = `Number of subscribers: ${subs.length}; Last valid date: ${lastValidDate} (retrieved on ${lastRetrieval})`;
+		if (DEVELOPMENT) message += `\nRunning in DEVELOPMENT mode!`;
+		bot.sendMessage(chatId, message)	
 	}
 	catch (err){
 		log.error(`Error while retrieving data: ${err.message}`)
@@ -351,28 +361,15 @@ bot.onText(/\/plot/, async (msg, match) => {
 
 })
 
-bot.onText(/\/about/, (msg, match) => {
-
-	const chatId = msg.chat.id;
-
-	bot.sendMessage(chatId, 
+const aboutMessage = 
 `<b>Italian Daily COVID Bot</b> v.${VERSION}
-Subscribe for daily updates of new cases in Italy, every day at about 5pm italian time. 
-<i>See https://github.com/PicciMario/covidbot for technical details.</i>`,
-		{
-			parse_mode: 'HTML'
-		}
-	);
+Subscribe for daily updates of new cases in Italy, every day at about 5pm italian time. Or request an immediate update with latest data. Ask /help for the command list. 
+\n<i>See https://github.com/PicciMario/covidbot for technical details.</i>`
 
-})
-
-bot.onText(/\/help/, (msg, match) => {
-
-	const chatId = msg.chat.id;
-
-	bot.sendMessage(chatId, 
-`COVID-19 bot by PicciMario <mario.piccinelli@gmail.com>. 
-Commands list:
+const helpMessage = 
+`<b>Italian Daily COVID Bot</b> v.${VERSION}
+Subscribe /sub for daily updates of new cases in Italy, every day at about 5pm italian time. Or ask for an immediate update with /plot or /digest.
+\nCommands list:
   /sub - Subscribe to daily COVID-19 updates
   /unsub - Unsubscribe
   /status - Subscription status
@@ -380,19 +377,19 @@ Commands list:
   /digest - Daily digest
   /about - About this bot
   /help - This list`
-	);
 
+bot.onText(/\/about/, (msg, match) => {
+	bot.sendMessage(msg.chat.id, aboutMessage, {parse_mode: 'HTML'});
 })
 
 bot.onText(/\/start/, (msg, match) => {
-
-	const chatId = msg.chat.id;
-
-	bot.sendMessage(chatId, 
-`COVID-19 bot by PicciMario <mario.piccinelli@gmail.com>. 
-Type /about or /help to begin.`
-	);
-
+	bot.sendMessage(msg.chat.id, aboutMessage, {parse_mode: 'HTML'});
 })
+
+bot.onText(/\/help/, (msg, match) => {
+	bot.sendMessage(msg.chat.id, helpMessage, {parse_mode: 'HTML'});
+})
+
+
 
 // ------------------------------------------------------------------------------------------------
