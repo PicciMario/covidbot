@@ -312,14 +312,21 @@ bot.onText(/\/debug/, async (msg, match) => {
 })
 
 bot.onText(/\/digest/, (msg, match) => {
+
 	const chatId = msg.chat.id;
+	
+	log.debug(`Requested digest from chat id: ${chatId}`);
+
+	const text = createDailyDigest(italianData);
+
 	bot.sendMessage(
 		chatId, 
-		createDailyDigest(italianData),
+		text,
 		{
 			parse_mode: 'HTML'
 		}
 	)
+
 });
 
 bot.onText(/\/sub/, async (msg, match) => {
