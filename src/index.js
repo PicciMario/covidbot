@@ -204,23 +204,47 @@ async function sendAll(force=false) {
 				const buffer = await buildPlot(italianData)
 				const digest = await createDailyDigest(italianData)
 		
-				subscribers.forEach(chatId => {
-					bot.sendPhoto(
-						chatId, 
-						buffer,
-						{},
-						{
-							filename: 'plot.png',
-							contentType: 'image/png'
+				subscribers.forEach(async chatId => {
+					try{
+						await bot.sendPhoto(
+							chatId, 
+							buffer,
+							{},
+							{
+								filename: 'plot.png',
+								contentType: 'image/png'
+							}
+						)
+						await bot.sendMessage(
+							chatId,
+							digest,
+							{
+								parse_mode: "HTML"
+							}
+						)
+					}
+					catch (err){
+						if (err.response && err.response.body){
+
+							const {error_code, description} = err.response.body;
+
+							// Errors which suggest removing the chatId from the subscription list
+							// 403 (forbidden): bot can't send to chat (maybe removed from group, or blocked)
+							if (error_code === 403){
+								log.err(`Removing subscription of ${chatId} from db due to error ${error_code} ${description}`);
+								await redislib.srem(redisclient, REDIS_SUBSCRIBERS, chatId);
+								await redislib.del(redisclient, REDIS_SUB_PREFIX + chatId);
+							}
+							else{
+								log.err(`Unable to send messages to ${chatId}: ${error_code} ${description}`)
+							}
+
 						}
-					)
-					bot.sendMessage(
-						chatId,
-						digest,
-						{
-							parse_mode: "HTML"
+						else {
+							log.err(`Unable to send messages to ${chatId} due to unknown error`)
+							log.err(err)
 						}
-					)
+					}
 				})
 		
 				log.debug('Updated plots sent to all subscribers.')	
