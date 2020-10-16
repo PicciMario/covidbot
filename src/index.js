@@ -9,7 +9,7 @@ import {buildPlot, createDailyDigest} from './plotter';
 import * as redislib from './redislib';
 
 // Bot version
-const VERSION = '1.2.0';
+const VERSION = '1.3.0';
 
 // REDIS set holding the subscribers list (as list of chat id)
 const REDIS_SUBSCRIBERS = 'subscribers'
