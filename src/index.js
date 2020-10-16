@@ -6,6 +6,7 @@ import dotenv from 'dotenv'
 import Redis from 'redis';
 import {retrieveDailyData} from './datarecovery'
 import {buildPlot, createDailyDigest} from './plotter';
+import * as redislib from './redislib';
 
 // Bot version
 const VERSION = '1.2.0';
@@ -171,7 +172,7 @@ async function sendAll() {
 	
 	try{
 
-		const subscribers = await retrieveSubscribersList()
+		const subscribers = await redislib.smembers(redisclient, REDIS_SUBSCRIBERS)
 
 		if (subscribers.length === 0) {
 			log.debug('Send all requested, but no subscribers available. Skipping request.')
@@ -235,80 +236,22 @@ async function sendAll() {
 
 // ------------------------------------------------------------------------------------------------
 
-/**
- * Retrieve subscribers list. Returns a Promise which resolved in the list as an 
- * array of chat ids.
- * @param {*} callback 
- */
-function retrieveSubscribersList(){
-
-	return new Promise((resolve, reject) => {
-		redisclient.smembers(REDIS_SUBSCRIBERS, (err, subscribers) => {
-			if (err != null){
-				reject(err);
-			}
-			resolve(subscribers);
-		})
-	})
-
-}
-
-// -----
-
 function getLastValidDate(){
-	return getRedisKey(REDIS_LASTVALIDDATE)
+	return redislib.get(redisclient, REDIS_LASTVALIDDATE)
 }
 
 function setLastValidDate(value){
-	return setRedisKey(REDIS_LASTVALIDDATE, value)
+	return redislib.set(redisclient, REDIS_LASTVALIDDATE, value)
 }
 
 // -----
 
 function getLastRetrieveTimestamp(){
-	return getRedisKey(REDIS_LASTRETRIEVETIMESTAMP)
+	return redislib.get(redisclient, REDIS_LASTRETRIEVETIMESTAMP)
 }
 
 function setLastRetrieveTimestamp(value){
-	return setRedisKey(REDIS_LASTRETRIEVETIMESTAMP, value)
-}
-
-// -----
-
-function getRedisKey(key){
-	return new Promise((resolve, reject) => {
-		redisclient.get(key, (err, value) => {
-			if (err != null){
-				reject(err);
-			}
-			resolve(value);
-		})		
-	})
-}
-
-function setRedisKey(key, value){
-	return new Promise((resolve, reject) => {
-		redisclient.set(key, value, (err) => {
-			if (err != null){
-				reject(err);
-			}
-			resolve();
-		})		
-	})
-}
-
-// ------------------------------------------------------------------------------------------------
-
-function addToSubscribersList(chatId){
-	redisclient.sadd(REDIS_SUBSCRIBERS, chatId, (err, res) => log.debug(`Adding new subscribe ${chatId} to db: ${res} (error: ${err})`))
-	redisclient.hset(REDIS_SUB_PREFIX + chatId, 'timestamp', moment().format("DD MMM YYYY HH:mm:SS").toString())
-	bot.sendMessage(chatId, "Subscription requested (check /status for current situation, might take a while).")
-}
-
-function removeFromSubscribersList(chatId){
-	redisclient.srem(REDIS_SUBSCRIBERS, chatId, (err, res) => log.debug(`Removing subscription of ${chatId} from db: ${res} (error: ${err})`))
-	redisclient.del(REDIS_SUB_PREFIX + chatId)
-	bot.sendMessage(chatId, "Cancellation requested (check /status for current situation, might take a while).")
+	return redislib.set(redisclient, REDIS_LASTRETRIEVETIMESTAMP, value)
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -332,7 +275,7 @@ bot.onText(/\/debug/, async (msg, match) => {
 	const chatId = msg.chat.id;
 
 	try{
-		const subs = await retrieveSubscribersList()
+		const subs = await redislib.smembers(redisclient, REDIS_SUBSCRIBERS)
 		const lastValidDate = await getLastValidDate()
 		const lastRetrieval = await getLastRetrieveTimestamp()
 		bot.sendMessage(chatId, `Number of subscribers: ${subs.length}; Last valid date: ${lastValidDate} (retrieved on ${lastRetrieval})`)	
@@ -354,30 +297,35 @@ bot.onText(/\/digest/, (msg, match) => {
 	)
 });
 
-bot.onText(/\/sub/, (msg, match) => {
+bot.onText(/\/sub/, async (msg, match) => {
 	const chatId = msg.chat.id;
-	addToSubscribersList(chatId)
+	log.debug(`Adding new subscribe ${chatId} to db...`);
+	await redislib.sadd(redisclient, REDIS_SUBSCRIBERS, chatId);
+	await redislib.hset(redisclient, REDIS_SUB_PREFIX + chatId, 'timestamp', moment().format("DD MMM YYYY HH:mm:SS").toString());
+	bot.sendMessage(chatId, "Subscription requested (check /status for current situation, might take a while).");
 });
 
-bot.onText(/\/unsub/, (msg, match) => {
+bot.onText(/\/unsub/, async (msg, match) => {
 	const chatId = msg.chat.id;
-	removeFromSubscribersList(chatId)
+	log.debug(`Removing subscription of ${chatId} from db...`);
+	await redislib.srem(redisclient, REDIS_SUBSCRIBERS, chatId);
+	await redislib.del(redisclient, REDIS_SUB_PREFIX + chatId);
+	bot.sendMessage(chatId, "Cancellation requested (check /status for current situation, might take a while).");
 });
 
-bot.onText(/\/status/, (msg, match) => {
+bot.onText(/\/status/, async (msg, match) => {
 	
 	const chatId = msg.chat.id;
 
-	redisclient.sismember(REDIS_SUBSCRIBERS, chatId, (err, res) => {
-		if (res === 1){
-			redisclient.hget(REDIS_SUB_PREFIX + chatId, 'timestamp', (err, res) => {
-				bot.sendMessage(chatId, `Subscribed since ${res}`)
-			})
-		}
-		else {
-			bot.sendMessage(chatId, `Currently not subscribed`)
-		}
-	})
+	const isMember = await redislib.sismember(redisclient, REDIS_SUBSCRIBERS, chatId);
+
+	if (isMember === 1){
+		const subSince = await redislib.hget(redisclient, REDIS_SUB_PREFIX + chatId, 'timestamp');
+		bot.sendMessage(chatId, `Subscribed since ${subSince}`)
+	}
+	else {
+		bot.sendMessage(chatId, `Currently not subscribed`)
+	}
 
 });
 
