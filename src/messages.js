@@ -65,3 +65,13 @@ export function isNotSubscribed(){
 	//return `Currently not subscribed`
 	return `Attualmente non iscritto (/sub per iscriverti).`
 }
+
+export function retrievalInProgress(){
+	return "<b>Nota</b>: sorveglianza in corso del sito della Protezione Civile, in attesa di aggiornamento di oggi. "
+	+ "Di solito i dati sono resi disponibili tra le 17.00 e le 17.15. " 
+	+ "Appena i nuovi dati saranno stati recuperati saranno spediti automaticamente agli utenti iscritti.\n\n";
+}
+
+export function retrievalInProgressCaption(){
+	return "NOTA: è in corso il recupero dei dati odierni, normalmente disponibili tra le 17.00 e le 17.15. Una volta pronti saranno trasmessi in automatico agli iscritti.\n";
+}

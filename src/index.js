@@ -138,10 +138,10 @@ async function main(){
 	}
 
 	// Everyday at 5pm, start a task which will try to send to subscribers until
-	// it is able to do so (because it retrieved new data).
-	cron.schedule('00 17 * * *', () => {
+	// it is able to do so (it won't until it retrieves updated data).
+	const startDailyCheck = () => {
 
-		log.debug(`Starting scheduled task...`);
+		log.debug(`Starting daily check...`);
 	
 		// Delete existing task
 		if (scheduledTask != null){
@@ -154,7 +154,7 @@ async function main(){
 			}
 		}
 
-		scheduledTask = cron.schedule('*/2 * * * *', async () => {
+		scheduledTask = cron.schedule('* * * * *', async () => {
 			const done = await sendAll();
 			if (done){
 				scheduledTask.destroy();
@@ -162,7 +162,8 @@ async function main(){
 			}
 		})
 
-	})
+	}
+	cron.schedule('00 17 * * *', startDailyCheck);
 
 }
 
@@ -317,7 +318,14 @@ bot.onText(/\/digest/, (msg, match) => {
 	
 	log.debug(`Requested digest from chat id: ${chatId}`);
 
-	const text = createDailyDigest(italianData);
+	// If an user requests an update, alert him if I'm still trying to download the 
+	// daily update (anytime from 17.00 onwards, usually before 17.15).
+	let text = createDailyDigest(italianData);
+	if (scheduledTask != null){
+		text =
+			messages.retrievalInProgress()
+			+ text;
+	}
 
 	bot.sendMessage(
 		chatId, 
@@ -368,12 +376,19 @@ bot.onText(/\/plot/, async (msg, match) => {
 	log.debug(`Requested plot from chat id: ${chatId}`);
 
 	const imageBuffer = await buildPlot(italianData);
+
+	// If an user requests an update, alert him if I'm still trying to download the 
+	// daily update (anytime from 17.00 onwards, usually before 17.15).	
+	let caption = messages.photoCaption();
+	if (scheduledTask != null){
+		caption = messages.retrievalInProgressCaption() + caption;
+	}
 	
 	bot.sendPhoto(
 		chatId, 
 		imageBuffer,
 		{
-			caption: messages.photoCaption()
+			caption: caption
 		},
 		{
 			filename: 'plot.png',
