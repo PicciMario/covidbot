@@ -10,7 +10,7 @@ import * as redislib from './redislib';
 import * as messages from './messages';
 
 // Bot version
-const VERSION = '1.3.0';
+const VERSION = '1.3.1';
 
 // REDIS set holding the subscribers list (as list of chat id)
 const REDIS_SUBSCRIBERS = 'subscribers'
