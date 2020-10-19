@@ -202,7 +202,7 @@ export function createDailyDigest(dataset){
 /**
  * Creates histogram with daily new infections. Returns a PNG stream inside a Buffer.
  * @param {Object[]} fullDataset
- * @returns {Buffer}
+ * @returns {Promise<Buffer>}
  */
 function _createTopPlot(fullDataset) {
 
@@ -245,7 +245,7 @@ function _createTopPlot(fullDataset) {
 /**
  * Creates histogram with daily new hospitalized/intensive care numbers. Returns a PNG stream inside a Buffer.
  * @param {Object[]} fullDataset
- * @returns {Buffer}
+ * @returns {Promise<Buffer>}
  */
 function _createBottomPlot(fullDataset) {
 
@@ -305,7 +305,7 @@ function _createBottomPlot(fullDataset) {
 /**
  * Combines the two plots into a single image. Returns a PNG Buffer.
  * @param {Object[]} dataset
- * @returns {Buffer}
+ * @returns {Promise<Buffer>}
  */
 export async function buildPlot(dataset){
 

@@ -3,28 +3,16 @@ import telegrambot from 'node-telegram-bot-api';
 import moment from 'moment'
 import Logger from './logger'
 import dotenv from 'dotenv'
-import Redis from 'redis';
+import botRedisConnector from './botRedisConnector';
 import {retrieveDailyData} from './datarecovery'
 import {buildPlot, createDailyDigest} from './plotter';
-import * as redislib from './redislib';
 import * as messages from './messages';
 
 // Bot version
 const VERSION = '1.3.1';
 
-// REDIS set holding the subscribers list (as list of chat id)
-const REDIS_SUBSCRIBERS = 'subscribers'
-
-// Prefix to REDIS hashes holding data for each subscriber (PREFIX + chatId)
-const REDIS_SUB_PREFIX = 'sub:'
-
-// Key holding the formatted timestamp of the last valid dataset retrieved
-const REDIS_LASTVALIDDATE = 'last'
 // Date format for the REDIS_LASTVALIDDATE Redis key content.
 const REDIS_LASTVALIDDATE_FORMAT = 'DD MMM YYYY HH:mm:SS';
-
-// Actual timestamp of the last successful retrieval operation
-const REDIS_LASTRETRIEVETIMESTAMP = 'last_timestamp'
 
 // ------------------------------------------------------------------------------------------------
 
@@ -66,52 +54,26 @@ if (!token){
 
 // Create a bot that uses 'polling' to fetch new updates
 const bot = new telegrambot(token, {polling: true});
-bot.on("polling_error", (err) => log.error("Telegram polling error", err));
+bot.on("polling_error", (err) => log.err("Telegram polling error", err));
 
 // Initialize REDIS connection --------------------------------------------------------------------
 
-// Read params from .env file
-const redisHost = process.env.REDIS_HOST || 'localhost';
-const redisPort = process.env.REDIS_PORT || 6379;
+// Connect to REDIS server
+const redisclient = new botRedisConnector(
+	process.env.REDIS_HOST || 'localhost', 
+	process.env.REDIS_PORT || 6379
+);
 
-// Seconds between redis connection attempts
-const SECONDS_REDIS_CONN_RETRY = 10;
+redisclient.connect();
 
-// REDIS connection retry strategy
-function _redis_retry_strategy({error, total_retry_time, attempt}){
-
-	// Total time: 60 sec
-	if (total_retry_time > 1000 * 60) {
-		log.debug(`Unable to reach Redis instance on ${redisHost}:${redisPort}, retry time exhausted, exiting.`);
+// Waits for the connection to be up, then runs main method.
+redisclient
+	.getClient()
+	.then(main)
+	.catch((err) => {
+		log.error("Unexpected error in main(), quitting.", err.message)
 		process.exit()
-	}
-
-	// Max connection attempts: 10
-	if (attempt > 10) {
-		log.debug(`Unable to reach Redis instance on ${redisHost}:${redisPort}, retry attempts exhausted, exiting.`);
-		process.exit()
-	}
-
-	log.debug(`Unable to reach Redis instance on ${redisHost}:${redisPort}, will retry in ${SECONDS_REDIS_CONN_RETRY} seconds...`);
-	
-	// Next attempt in X ms.
-	return SECONDS_REDIS_CONN_RETRY*1000; 
-
-}
-
-// Init connection
-log.debug(`Attempting Redis connection on ${redisHost}:${redisPort}...`);
-const redisclient = Redis.createClient({
-	host: redisHost,
-	port: redisPort,
-	retry_strategy: _redis_retry_strategy
-});
-
-// Callback after successful redis connection
-redisclient.on("connect", async function() {
-	log.debug("...Redis connection established.");
-	main();
-});
+	});
 
 // ------------------------------------------------------------------------------------------------
 
@@ -124,24 +86,28 @@ async function main(){
 
 	try{
 		italianData = await retrieveDailyData()
-		log.debug(`...italian nation-level data done (${italianData.length} records).`)
+		log.debug(`Data retrieved (${italianData.length} records).`)
 	}
 	catch (err){
-		italianData = []
-		log.err(`Error: ${err.message}`)
+		log.err(`Error during initial data retrieve: ${err.message}. Exiting.`)
+		process.exit()
 	}
 
 	const lastElement = italianData[italianData.length-1];
 	if (lastElement){
-		await setLastValidDate(lastElement['data'].format(REDIS_LASTVALIDDATE_FORMAT));
-		await setLastRetrieveTimestamp(moment().format('DD/MMM/YYYY HH:mm:SS'));
+		await redisclient.setLastValidDate(lastElement['data'].format(REDIS_LASTVALIDDATE_FORMAT));
+		await redisclient.setLastRetrieveTimestampAsNow();
+	}
+	else {
+		log.err(`Initial retrieve returned empty data, exiting.`);
+		process.exit()
 	}
 
 	// Everyday at 5pm, start a task which will try to send to subscribers until
 	// it is able to do so (it won't until it retrieves updated data).
 	const startDailyCheck = () => {
 
-		log.debug(`Starting daily check...`);
+		log.debug(`Starting daily check.`);
 	
 		// Delete existing task
 		if (scheduledTask != null){
@@ -150,7 +116,7 @@ async function main(){
 				scheduledTask = null;
 			}
 			catch (err){
-				log.debug(`Error while killing scheduled task: ${err.message}`)
+				log.error(`Error while killing scheduled task: ${err.message}`)
 			}
 		}
 
@@ -159,6 +125,7 @@ async function main(){
 			if (done){
 				scheduledTask.destroy();
 				scheduledTask = null;
+				log.debug(`Daily check terminated.`);
 			}
 		})
 
@@ -174,7 +141,7 @@ async function sendAll(force=false) {
 	
 	try{
 
-		const subscribers = await redislib.smembers(redisclient, REDIS_SUBSCRIBERS)
+		const subscribers = await redisclient.getSubscribers()
 
 		if (subscribers.length === 0) {
 			log.debug('Send all requested, but no subscribers available. Skipping request.')
@@ -190,17 +157,17 @@ async function sendAll(force=false) {
 		if (lastRetrievedElement){
 
 			const lastElementsDate = lastRetrievedElement['data'].format(REDIS_LASTVALIDDATE_FORMAT);
-			const storedLastValidDate = await getLastValidDate();
+			const storedLastValidDate = await redisclient.getLastValidDate();
 			
 			if (lastElementsDate !== storedLastValidDate || force === true){
 
 				log.debug(`Sending updated plot to ${subscribers.length} subscribers.`)
 
-				await setLastValidDate(lastElementsDate);
+				await redisclient.setLastValidDate(lastElementsDate);
 
 				italianData = data;	
 				log.debug(`Retrieved new data (${data.length} records).`);
-				await setLastRetrieveTimestamp(moment().format('DD/MMM/YYYY HH:mm:SS'));
+				await redisclient.setLastRetrieveTimestampAsNow();
 		
 				const buffer = await buildPlot(italianData)
 				const digest = await createDailyDigest(italianData)
@@ -233,8 +200,7 @@ async function sendAll(force=false) {
 							// 403 (forbidden): bot can't send to chat (maybe removed from group, or blocked)
 							if (error_code === 403){
 								log.err(`Removing subscription of ${chatId} from db due to error ${error_code} ${description}`);
-								await redislib.srem(redisclient, REDIS_SUBSCRIBERS, chatId);
-								await redislib.del(redisclient, REDIS_SUB_PREFIX + chatId);
+								redisclient.removeSubscriber(chatId)
 							}
 							else{
 								log.err(`Unable to send messages to ${chatId}: ${error_code} ${description}`)
@@ -242,8 +208,7 @@ async function sendAll(force=false) {
 
 						}
 						else {
-							log.err(`Unable to send messages to ${chatId} due to unknown error`)
-							log.err(err)
+							log.err(`Unable to send messages to ${chatId} due to unknown error: ${err.message}`)
 						}
 					}
 				})
@@ -270,26 +235,6 @@ async function sendAll(force=false) {
 
 // ------------------------------------------------------------------------------------------------
 
-function getLastValidDate(){
-	return redislib.get(redisclient, REDIS_LASTVALIDDATE)
-}
-
-function setLastValidDate(value){
-	return redislib.set(redisclient, REDIS_LASTVALIDDATE, value)
-}
-
-// -----
-
-function getLastRetrieveTimestamp(){
-	return redislib.get(redisclient, REDIS_LASTRETRIEVETIMESTAMP)
-}
-
-function setLastRetrieveTimestamp(value){
-	return redislib.set(redisclient, REDIS_LASTRETRIEVETIMESTAMP, value)
-}
-
-// ------------------------------------------------------------------------------------------------
-
 if (DEVELOPMENT){
 	bot.onText(/\/sendall/, (msg, match) => sendAll(true))
 }
@@ -299,15 +244,15 @@ bot.onText(/\/debug/, async (msg, match) => {
 	const chatId = msg.chat.id;
 
 	try{
-		const subs = await redislib.smembers(redisclient, REDIS_SUBSCRIBERS)
-		const lastValidDate = await getLastValidDate()
-		const lastRetrieval = await getLastRetrieveTimestamp()
+		const subs = await redisclient.getSubscribers()
+		const lastValidDate = await redisclient.getLastValidDate()
+		const lastRetrieval = await redisclient.getLastRetrieveTimestamp()
 		let message = `Number of subscribers: ${subs.length}; Last valid date: ${lastValidDate} (retrieved on ${lastRetrieval})`;
 		if (DEVELOPMENT) message += `\nRunning in DEVELOPMENT mode!`;
 		bot.sendMessage(chatId, message)	
 	}
 	catch (err){
-		log.error(`Error while retrieving data: ${err.message}`)
+		log.err(`Error while retrieving data: ${err.message}`)
 	}
 
 })
@@ -340,16 +285,14 @@ bot.onText(/\/digest/, (msg, match) => {
 bot.onText(/\/sub/, async (msg, match) => {
 	const chatId = msg.chat.id;
 	log.debug(`Adding new subscribe ${chatId} to db...`);
-	await redislib.sadd(redisclient, REDIS_SUBSCRIBERS, chatId);
-	await redislib.hset(redisclient, REDIS_SUB_PREFIX + chatId, 'timestamp', moment().format("DD MMM YYYY HH:mm:SS").toString());
+	await redisclient.addSubscriber(chatId)
 	bot.sendMessage(chatId, messages.subRequested());
 });
 
 bot.onText(/\/unsub/, async (msg, match) => {
 	const chatId = msg.chat.id;
 	log.debug(`Removing subscription of ${chatId} from db...`);
-	await redislib.srem(redisclient, REDIS_SUBSCRIBERS, chatId);
-	await redislib.del(redisclient, REDIS_SUB_PREFIX + chatId);
+	await redisclient.removeSubscriber(chatId)
 	bot.sendMessage(chatId, messages.cancRequested());
 });
 
@@ -357,10 +300,10 @@ bot.onText(/\/status/, async (msg, match) => {
 	
 	const chatId = msg.chat.id;
 
-	const isMember = await redislib.sismember(redisclient, REDIS_SUBSCRIBERS, chatId);
+	const isMember = await redisclient.checkIfSubscribed(chatId);
 
 	if (isMember === 1){
-		const subSince = await redislib.hget(redisclient, REDIS_SUB_PREFIX + chatId, 'timestamp');
+		const subSince = await redisclient.getSubTimestamp(chatId);
 		bot.sendMessage(chatId, messages.isSubscribed(subSince))
 	}
 	else {

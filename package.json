@@ -11,6 +11,7 @@
   "author": "mario.piccinelli@gmail.com",
   "license": "CC-BY-4.0",
   "dependencies": {
+    "@babel/plugin-proposal-class-properties": "^7.12.1",
     "chart.js": "^2.9.3",
     "chartjs-node-canvas": "^3.0.6",
     "moment": "^2.29.0",
@@ -39,7 +40,8 @@
         {
           "regenerator": true
         }
-      ]
+      ],
+      "@babel/plugin-proposal-class-properties"
     ]
   }
 }
