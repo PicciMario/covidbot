@@ -12,31 +12,29 @@ export default class Logger{
 	}
 
 	_log(level, args){
-		console.log(
-			'[' + level + ']', 
-			this.prefix,
-			Moment().locale('it').format('DD/MM/YYYY-HH:mm:ss'),
-			[...args]
-		);
+		const lev = `[${level}]`.padEnd(8);
+		const pref = this.prefix.padEnd(20)
+		const ts = Moment().locale('it').format('DD/MM/YYYY-HH:mm:ss');
+		console.log(`${lev} | ${pref} | ${ts} | ${args.join(' ')}`);
 	}
 
-	debug(){
-		this._log('DEBUG', arguments);
+	debug(...args){
+		this._log('DEBUG', args);
 	}
 
-	info(){
-		this._log('INFO', arguments);
+	info(...args){
+		this._log('INFO', args);
 	}
 
-	warn(){
-		this._log('WARN', arguments);
+	warn(...args){
+		this._log('WARN', args);
 	}
 
-	err(){
-		this._log('ERROR', arguments);
-	}
-	error(){
-		this.err(arguments);
+	err(...args){
+		this._log('ERROR', args);
 	}	
+	error(...args){
+		this._log('ERROR', args);
+	}		
 
 }
