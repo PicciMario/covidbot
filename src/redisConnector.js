@@ -111,7 +111,6 @@ export default class redisConnector{
                     accept(this.redisClient)
                 }         
                 else {
-                    log.debug("interval", this.connectionRefused, this.isConnected)
                     setTimeout(check.bind(this), 500)       
                 }
             }
