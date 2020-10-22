@@ -7,6 +7,7 @@ import {retrieveDailyData} from './datarecovery'
 import {buildPlot, createDailyDigest} from './plotter';
 import * as messages from './messages';
 import * as Regions from './regions';
+import { splitArray } from './utilities';
 
 // Bot version
 const VERSION = '1.3.1';
@@ -434,9 +435,7 @@ bot.onText(/\/regioni/, (msg, match) => {
 
 	const opts = {
 		reply_markup: {
-			inline_keyboard: [
-				keyboard
-			]
+			inline_keyboard: splitArray(keyboard, 3)
 		}
 	}
 
@@ -454,8 +453,6 @@ bot.on('callback_query', (callbackQuery) => {
 
 	const data = JSON.parse(callbackQuery.data);
 	const {type} = data;
-
-	console.log('callback', data)
 
 	switch(type){
 

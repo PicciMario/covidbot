@@ -225,9 +225,7 @@ export function showAreasList(bot, chat_id, message_id){
 			chat_id: chat_id,
 			message_id: message_id,
 			reply_markup: {
-				inline_keyboard: [
-					keyboard
-				]
+				inline_keyboard: splitArray(keyboard, 3)
 			}					
 		}
 	)
