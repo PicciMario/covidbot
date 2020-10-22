@@ -35,6 +35,9 @@ const log = new Logger("index.js")
  */
 let italianData = []
 
+let plotBuffer = null;
+let digestText = null;
+
 let scheduledTask = null;
 
 // Startup console messages -----------------------------------------------------------------------
@@ -78,21 +81,59 @@ redisclient
 // ------------------------------------------------------------------------------------------------
 
 /**
+ * Prints formatted result from "process.hrtime()" call.
+ * @param {number[]} param0 
+ * @returns {string}
+ */
+function printTime([sec, nanosec]){
+	if (sec === 0){
+		return `${Math.ceil(nanosec/1000000)}ms`
+	}
+	else {
+		return `${sec}s ${Math.ceil(nanosec/1000000)}ms`
+	}
+}
+
+async function buildMessagesCaches(){
+
+	let timing;
+
+	log.debug('Building plot and digest...');	
+	
+	timing = process.hrtime();
+	plotBuffer = await buildPlot(italianData)
+	timing = process.hrtime(timing);
+	log.debug(`-> Plot cache built in ${printTime(timing)}`);
+	
+	timing = process.hrtime();
+	digestText = await createDailyDigest(italianData)	
+	timing = process.hrtime(timing);
+	log.debug(`-> Digest cache built in ${printTime(timing)}`);
+
+}
+
+/**
  * Application entry point (called after Redis connection established).
  */
 async function main(){
 
 	log.debug('Retrieving italian nation-level data...')
 
+	let timing;
+
+	// Initial data retrieve
 	try{
+		timing = process.hrtime();
 		italianData = await retrieveDailyData()
-		log.debug(`Data retrieved (${italianData.length} records).`)
+		timing = process.hrtime(timing);
+		log.debug(`-> Retrieved ${italianData.length} records in ${printTime(timing)}.`)
 	}
 	catch (err){
 		log.err(`Error during initial data retrieve: ${err.message}. Exiting.`)
 		process.exit()
 	}
 
+	// Saving valid dates for he retrieved data on redis
 	const lastElement = italianData[italianData.length-1];
 	if (lastElement){
 		await redisclient.setLastValidDate(lastElement['data'].format(REDIS_LASTVALIDDATE_FORMAT));
@@ -102,6 +143,9 @@ async function main(){
 		log.err(`Initial retrieve returned empty data, exiting.`);
 		process.exit()
 	}
+
+	// Building plot and digest
+	await buildMessagesCaches();
 
 	// Everyday at 5pm, start a task which will try to send to subscribers until
 	// it is able to do so (it won't until it retrieves updated data).
@@ -138,20 +182,25 @@ async function main(){
  * Send plot data to all subscribers.
  */
 async function sendAll(force=false) {
+
+	log.debug('########## Requested global transmission to subscribers. ##########');
+
+	let timing;
 	
 	try{
 
 		const subscribers = await redisclient.getSubscribers()
 
 		if (subscribers.length === 0) {
-			log.debug('Send all requested, but no subscribers available. Skipping request.')
-			return;
-		}
-		else {
-			log.debug(`Checking whether to send plot to ${subscribers.length} subscribers.`)
+			log.debug('-> No subscribers in database. Skipping request.')
+			return true;
 		}
 
+		log.debug('Retrieving italian nation-level data...')
+		timing = process.hrtime();
 		const data = await retrieveDailyData()
+		timing = process.hrtime(timing);
+		log.debug(`-> Retrieved ${italianData.length} records in ${printTime(timing)}.`)
 
 		const lastRetrievedElement = data[data.length-1];
 		if (lastRetrievedElement){
@@ -161,22 +210,21 @@ async function sendAll(force=false) {
 			
 			if (lastElementsDate !== storedLastValidDate || force === true){
 
-				log.debug(`Sending updated plot to ${subscribers.length} subscribers.`)
-
 				await redisclient.setLastValidDate(lastElementsDate);
 
-				italianData = data;	
-				log.debug(`Retrieved new data (${data.length} records).`);
+				italianData = data;
 				await redisclient.setLastRetrieveTimestampAsNow();
 		
-				const buffer = await buildPlot(italianData)
-				const digest = await createDailyDigest(italianData)
+				// Rebuilding plots and digests
+				await buildMessagesCaches();
+
+				log.debug(`Sending updated plot to ${subscribers.length} subscribers.`)
 		
 				subscribers.forEach(async chatId => {
 					try{
 						await bot.sendPhoto(
 							chatId, 
-							buffer,
+							plotBuffer,
 							{},
 							{
 								filename: 'plot.png',
@@ -185,7 +233,7 @@ async function sendAll(force=false) {
 						)
 						await bot.sendMessage(
 							chatId,
-							digest,
+							digestText,
 							{
 								parse_mode: "HTML"
 							}
@@ -213,13 +261,14 @@ async function sendAll(force=false) {
 					}
 				})
 		
-				log.debug('Updated plots sent to all subscribers.')	
+				log.debug(`Updated data sent to all subscribers`)
+				log.debug('###################################################################');
 				
 				return true;
 
 			}
 			else {
-				log.debug(`Retrieved data showing the same date as previously stored ${storedLastValidDate}, skipping transmission of stale data.`)
+				log.debug(`Retrieved data showing the same date as previously stored ${storedLastValidDate}, skipping transmission.`)
 			}
 
 		}
@@ -265,7 +314,8 @@ bot.onText(/\/digest/, (msg, match) => {
 
 	// If an user requests an update, alert him if I'm still trying to download the 
 	// daily update (anytime from 17.00 onwards, usually before 17.15).
-	let text = createDailyDigest(italianData);
+	//let text = createDailyDigest(italianData);
+	let text = digestText;
 	if (scheduledTask != null){
 		text =
 			messages.retrievalInProgress()
@@ -318,7 +368,8 @@ bot.onText(/\/plot/, async (msg, match) => {
 
 	log.debug(`Requested plot from chat id: ${chatId}`);
 
-	const imageBuffer = await buildPlot(italianData);
+	//const imageBuffer = await buildPlot(italianData);
+	const imageBuffer = plotBuffer;
 
 	// If an user requests an update, alert him if I'm still trying to download the 
 	// daily update (anytime from 17.00 onwards, usually before 17.15).	
