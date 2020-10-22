@@ -411,3 +411,82 @@ bot.onText(/\/help/, (msg, match) => {
 bot.onText(/\/aiuto/, (msg, match) => {
 	bot.sendMessage(msg.chat.id, messages.helpMessage(VERSION), {parse_mode: 'HTML'});
 })
+
+
+
+bot.onText(/\/regioni/, (msg, match) => {
+
+	const opts = {
+		reply_markup: {
+			inline_keyboard: [[
+				{
+					text: 'Lombardia',
+					callback_data: 'sit_lombardia'
+				},
+				{
+					text: 'Piemonte',
+					callback_data: 'sit_piemonte'
+				},
+				{
+					text: 'Piemonte',
+					callback_data: 'sit_piemonte'
+				},
+				{
+					text: 'Piemonte',
+					callback_data: 'sit_piemonte'
+				},
+				{
+					text: 'Piemonte',
+					callback_data: 'sit_piemonte'
+				},
+			],[
+				{
+					text: 'Piemonte',
+					callback_data: 'sit_piemonte'
+				},
+				{
+					text: 'Piemonte',
+					callback_data: 'sit_piemonte'
+				},
+				{
+					text: 'Piemonte',
+					callback_data: 'sit_piemonte'
+				},
+				{
+					text: 'Piemonte',
+					callback_data: 'sit_piemonte'
+				},
+			]]
+		}
+	}
+
+	bot.sendMessage(msg.from.id, 'Seleziona regione', opts);
+
+})
+
+
+bot.onText(/\/clear/, (msg) => {
+	bot.sendMessage(msg.chat.id, 'Ok', {
+		reply_markup: JSON.stringify({
+			remove_keyboard: true
+		})
+	})
+})
+
+  // Handle callback queries
+bot.on('callback_query', (callbackQuery) => {
+
+	const msg = callbackQuery.message;
+	const data = callbackQuery.data;
+
+	console.log("callback_query")
+
+	bot.editMessageText(
+		"Hai chiesto: " + data,
+		{
+			chat_id: msg.chat.id,
+			message_id: msg.message_id,
+		}
+	)
+
+});
