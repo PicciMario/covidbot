@@ -1,12 +1,12 @@
 import cron from 'node-cron';
 import telegrambot from 'node-telegram-bot-api';
-import moment from 'moment'
 import Logger from './logger'
 import dotenv from 'dotenv'
 import botRedisConnector from './botRedisConnector';
 import {retrieveDailyData} from './datarecovery'
 import {buildPlot, createDailyDigest} from './plotter';
 import * as messages from './messages';
+import * as Regions from './regions';
 
 // Bot version
 const VERSION = '1.3.1';
@@ -412,59 +412,7 @@ bot.onText(/\/aiuto/, (msg, match) => {
 	bot.sendMessage(msg.chat.id, messages.helpMessage(VERSION), {parse_mode: 'HTML'});
 })
 
-
-
-bot.onText(/\/regioni/, (msg, match) => {
-
-	const opts = {
-		reply_markup: {
-			inline_keyboard: [[
-				{
-					text: 'Lombardia',
-					callback_data: 'sit_lombardia'
-				},
-				{
-					text: 'Piemonte',
-					callback_data: 'sit_piemonte'
-				},
-				{
-					text: 'Piemonte',
-					callback_data: 'sit_piemonte'
-				},
-				{
-					text: 'Piemonte',
-					callback_data: 'sit_piemonte'
-				},
-				{
-					text: 'Piemonte',
-					callback_data: 'sit_piemonte'
-				},
-			],[
-				{
-					text: 'Piemonte',
-					callback_data: 'sit_piemonte'
-				},
-				{
-					text: 'Piemonte',
-					callback_data: 'sit_piemonte'
-				},
-				{
-					text: 'Piemonte',
-					callback_data: 'sit_piemonte'
-				},
-				{
-					text: 'Piemonte',
-					callback_data: 'sit_piemonte'
-				},
-			]]
-		}
-	}
-
-	bot.sendMessage(msg.from.id, 'Seleziona regione', opts);
-
-})
-
-
+/*
 bot.onText(/\/clear/, (msg) => {
 	bot.sendMessage(msg.chat.id, 'Ok', {
 		reply_markup: JSON.stringify({
@@ -472,21 +420,59 @@ bot.onText(/\/clear/, (msg) => {
 		})
 	})
 })
+*/
 
-  // Handle callback queries
+bot.onText(/\/regioni/, (msg, match) => {
+
+	const keyboard = Regions.REGIONS.map(area => ({
+		text: area.descr,
+		callback_data: JSON.stringify({
+			type: 'area',
+			id_area: area.id
+		})
+	}))
+
+	const opts = {
+		reply_markup: {
+			inline_keyboard: [
+				keyboard
+			]
+		}
+	}
+
+	bot.sendMessage(msg.from.id, 'Dati regionali. Seleziona area:', opts);
+
+})
+
+
+// Handle callback queries
 bot.on('callback_query', (callbackQuery) => {
 
 	const msg = callbackQuery.message;
-	const data = callbackQuery.data;
+	const chat_id = msg.chat.id;
+	const message_id = msg.message_id;
 
-	console.log("callback_query")
+	const data = JSON.parse(callbackQuery.data);
+	const {type} = data;
 
-	bot.editMessageText(
-		"Hai chiesto: " + data,
-		{
-			chat_id: msg.chat.id,
-			message_id: msg.message_id,
-		}
-	)
+	console.log('callback', data)
+
+	switch(type){
+
+		case 'area':
+			Regions.manageAreaCallback(bot, chat_id, message_id, data);
+			break;
+
+		case 'region':
+			Regions.manageRegionCallback(bot, chat_id, message_id, data);
+			break;
+
+		case 'areas_list':
+			Regions.showAreasList(bot, chat_id, message_id);
+			break;		
+
+	}
+
+	bot.answerCallbackQuery(callbackQuery.id);
 
 });
