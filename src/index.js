@@ -219,6 +219,8 @@ async function sendAll(force=false) {
 				await buildMessagesCaches();
 
 				log.debug(`Sending updated plot to ${subscribers.length} subscribers.`)
+
+				timing = process.hrtime();
 		
 				subscribers.forEach(async chatId => {
 					try{
@@ -260,8 +262,10 @@ async function sendAll(force=false) {
 						}
 					}
 				})
+
+				timing = process.hrtime(timing);
 		
-				log.debug(`Updated data sent to all subscribers`)
+				log.debug(`Updated data sent to all subscribers (in ${printTime(timing)})`)
 				log.debug('###################################################################');
 				
 				return true;
@@ -306,12 +310,10 @@ bot.onText(/\/debug/, async (msg, match) => {
 
 })
 
-bot.onText(/\/digest/, (msg, match) => {
+bot.onText(/\/digest/, async(msg, match) => {
 
 	const chatId = msg.chat.id;
 	
-	log.debug(`Requested digest from chat id: ${chatId}`);
-
 	// If an user requests an update, alert him if I'm still trying to download the 
 	// daily update (anytime from 17.00 onwards, usually before 17.15).
 	//let text = createDailyDigest(italianData);
@@ -322,13 +324,17 @@ bot.onText(/\/digest/, (msg, match) => {
 			+ text;
 	}
 
-	bot.sendMessage(
+	let timing = process.hrtime();
+	await bot.sendMessage(
 		chatId, 
 		text,
 		{
 			parse_mode: 'HTML'
 		}
 	)
+	timing = process.hrtime(timing);
+
+	log.debug(`Sent requested digest to chat id: ${chatId} (in ${printTime(timing)}).`);
 
 });
 
@@ -366,11 +372,6 @@ bot.onText(/\/plot/, async (msg, match) => {
 
 	const chatId = msg.chat.id;
 
-	log.debug(`Requested plot from chat id: ${chatId}`);
-
-	//const imageBuffer = await buildPlot(italianData);
-	const imageBuffer = plotBuffer;
-
 	// If an user requests an update, alert him if I'm still trying to download the 
 	// daily update (anytime from 17.00 onwards, usually before 17.15).	
 	let caption = messages.photoCaption();
@@ -378,9 +379,10 @@ bot.onText(/\/plot/, async (msg, match) => {
 		caption = messages.retrievalInProgressCaption() + caption;
 	}
 	
-	bot.sendPhoto(
+	let timing = process.hrtime();
+	await bot.sendPhoto(
 		chatId, 
-		imageBuffer,
+		plotBuffer,
 		{
 			caption: caption
 		},
@@ -389,6 +391,9 @@ bot.onText(/\/plot/, async (msg, match) => {
 			contentType: 'image/png',
 		}
 	)
+	timing = process.hrtime(timing);
+
+	log.debug(`Sent requested plot to chat id: ${chatId} (in ${printTime(timing)}).`);
 
 })
 
