@@ -1,26 +1,13 @@
 import sharp from 'sharp';
 import { CanvasRenderService } from 'chartjs-node-canvas';
-import numeral from 'numeral';
-
-// numeral configuration  -------------------------------------------------------------------------
-
-numeral.register('locale', 'it', {
-    delimiters: {
-        thousands: '\'',
-        decimal: ','
-    },
-    abbreviations: {
-        thousand: 'k',
-        million: 'm',
-        billion: 'b',
-        trillion: 't'
-    },
-    currency: {
-        symbol: '€'
-    }
-});
-
-numeral.locale('it');
+import {
+	sliceDataset, 
+	_prevValue, _beforePrevValue,
+	_lastValue, lastValue, lastValueWithSign, 
+	_deltaValue, deltaValue, deltaValueWithSign, 
+	lastDateAsString,
+	formatInt, formatIntSign, formatPerc
+} from './utilities'
 
 // ------------------------------------------------------------------------------------------------
 
@@ -32,159 +19,6 @@ const KEY_TERAPIA_INTENSIVA = 'terapia_intensiva';
 const KEY_RICOVERATI = 'ricoverati_con_sintomi';
 const KEY_VARIAZIONE_POSITIVI = 'variazione_totale_positivi';
 const KEY_TAMPONI = 'tamponi';
-
-// ------------------------------------------------------------------------------------------------
-
-/**
- * Returns a new dataset with the "maxItems" last elements (if available).
- * @param {Object[]} dataset 
- * @param {number} [maxItems=120] - Items to slice
- */
-function _sliceDataset(dataset, maxItems = 120){
-
-	const num = Math.min(maxItems, dataset.length);
-	const elements = dataset.slice(dataset.length-num, dataset.length);
-    
-    return elements
-
-}
-
-/**
- * Value of the key item inside the last element of the dataset.
- * @param {Object[]} dataset 
- * @param {string} key 
- * @param {[number=0]} 0 for last day, 1 for the one before, 2 for the one before that and so on.
- * @returns {number}
- */
-function _value(dataset, key, pos = 0){
-
-    if (dataset.length < (pos+1)) return 0;
-
-	const lastElement = dataset[dataset.length-(pos+1)];
-    
-    if (lastElement){
-        return lastElement[key] || 0;
-    }
-    else {
-        return 0;
-    }
-
-}
-
-/**
- * Value of the key item inside the last element of the dataset.
- * @param {Object[]} dataset 
- * @param {string} key 
- * @returns {number}
- */
-function _lastValue(dataset, key) {return _value(dataset, key, 0)}
-
-/**
- * Value of the key item inside the second to last element of the dataset.
- * @param {Object[]} dataset 
- * @param {string} key 
- * @returns {number}
- */
-function _prevValue(dataset, key){return _value(dataset, key, 1)}
-
-/**
- * Value of the key item inside the third to last element of the dataset.
- * @param {Object[]} dataset 
- * @param {string} key 
- * @returns {number}
- */
-function _beforePrevValue(dataset, key){return _value(dataset, key, 2)}
-
-/**
- * Difference between the values of the key item in the last and 
- * second-to-last elements of the dataset.
- * @param {Object[]} dataset 
- * @param {string} key 
- * @returns {number}
- */
-function _deltaValue(dataset, key){
-	
-	const lastValue = _lastValue(dataset, key);
-	const prevValue = _prevValue(dataset, key);
-
-	return lastValue - prevValue;
-
-}
-
-/**
- * Format number as integer string.
- * @param {number} val 
- * @returns {string}
- */
-function formatInt(val){
-	return numeral(val).format();
-}
-
-/**
- * Format number as integer string with sign.
- * @param {number} val 
- * @returns {string}
- */
-function formatIntSign(val){
-	return numeral(val).format('+0,0');
-}
-
-/**
- * Value of the key item inside the last element of the dataset.
- * Formatted as string.
- * @param {Object[]} dataset 
- * @param {string} key 
- * @returns {string}
- */
-function lastValue(dataset, key){return formatInt(_lastValue(dataset, key))}
-
-/**
- * Difference between the values of the key item in the last and 
- * second-to-last elements of the dataset.
- * * Formatted as string.
- * @param {Object[]} dataset 
- * @param {string} key 
- * @returns {string}
- */
-function deltaValue(dataset, key){return formatInt(_deltaValue(dataset, key))}
-
-/**
- * Value of the key item inside the last element of the dataset.
- * Formatted as string with explicit sign (+/-).
- * @param {Object[]} dataset 
- * @param {string} key 
- * @returns {string}
- */
-function lastValueWithSign(dataset, key){return formatIntSign(_lastValue(dataset, key))}
-
-/**
- * Difference between the values of the key item in the last and 
- * second-to-last elements of the dataset.
- * Formatted as string with explicit sign (+/-).
- * @param {Object[]} dataset 
- * @param {string} key 
- * @returns {string}
- */
-function deltaValueWithSign(dataset, key){return formatIntSign(_deltaValue(dataset, key))}
-
-/**
- * Formatted date from the "key" of the last element of the dataset.
- * @param {Object[]} dataset 
- * @param {string} [key="data"]
- * @returns {string}
- */
-function lastDateAsString(dataset, key='data'){
-
-    const lastElement = dataset[dataset.length-1];
-
-    if (lastElement){
-        return lastElement[key].format('DD/MM/YYYY')
-    }
-    else {
-        return '';
-    }    
-
-}
 
 // ------------------------------------------------------------------------------------------------
 
@@ -209,12 +43,12 @@ export function createDailyDigest(dataset){
 	const deltaTamp = deltaValue(dataset, KEY_TAMPONI);
 
 	const positiviSuTamponiOggi = _lastValue(dataset, KEY_NUOVI_POSITIVI) / _deltaValue(dataset, KEY_TAMPONI) * 100;
-	const percPosSuTamponiOggi = numeral(positiviSuTamponiOggi).format('0,0.00');
+	const percPosSuTamponiOggi = formatPerc(positiviSuTamponiOggi);
 	const positiviSuTamponiIeri = _prevValue(dataset, KEY_NUOVI_POSITIVI) / (_prevValue(dataset, KEY_TAMPONI) - _beforePrevValue(dataset, KEY_TAMPONI)) * 100;
-	const percPosSuTamponiIeri = numeral(positiviSuTamponiIeri).format('0,0.00');
+	const percPosSuTamponiIeri = formatPerc(positiviSuTamponiIeri);
 	
 	const deltaTampIeriRaw = _prevValue(dataset, KEY_TAMPONI) - _beforePrevValue(dataset, KEY_TAMPONI);
-	const deltaTampIeri = numeral(deltaTampIeriRaw).format();
+	const deltaTampIeri = formatIntSign(deltaTampIeriRaw);
 
 	
 	let text = `<b>Aggiornamento del ${lastDate}</b>`
@@ -236,7 +70,7 @@ export function createDailyDigest(dataset){
  */
 function _createTopPlot(fullDataset) {
 
-    const dataset = _sliceDataset(fullDataset)
+    const dataset = sliceDataset(fullDataset)
 
     const nuoviPOS = lastValueWithSign(dataset, KEY_NUOVI_POSITIVI);
 
@@ -279,7 +113,7 @@ function _createTopPlot(fullDataset) {
  */
 function _createBottomPlot(fullDataset) {
 
-    const dataset = _sliceDataset(fullDataset)
+    const dataset = sliceDataset(fullDataset)
     
     const lastTI = lastValue(dataset, KEY_TERAPIA_INTENSIVA);
     const deltaTI = deltaValueWithSign(dataset, KEY_TERAPIA_INTENSIVA);
