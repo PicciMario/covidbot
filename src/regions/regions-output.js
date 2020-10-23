@@ -10,7 +10,7 @@ import { CanvasRenderService } from 'chartjs-node-canvas';
 import {
 	sliceDataset, 
 	_prevValue, _beforePrevValue,
-	_lastValue, lastValue, lastValueWithSign, 
+	_lastValue, lastValue, lastValueWithSign, lastValueAsString,
 	_deltaValue, deltaValue, deltaValueWithSign, 
 	lastDateAsString, dateAsString,
 	formatInt, formatIntSign, formatPerc
@@ -33,21 +33,22 @@ const REG_TOT_CASI = 'totale_casi'
  */
 export function createRegionDailyDigest(dataset){
 
-	const lastDate = dateAsString(dataset);
-	const regione = dataset[REG_DENOMINAZIONE];
-	const nuoviPos = formatInt(dataset[REG_NUOVI_POS]);
-	const totDimessi = formatInt(dataset[REG_DIMESSI]);
-	const totDeceduti = formatInt(dataset[REG_DECEDUTI]);
-	const lastTotPos = formatInt(dataset[REG_TOT_POS]);
-	const deltaTotPos = formatIntSign(dataset[REG_DELTA_TOT_POS]);
-	const lastRic = formatInt(dataset[REG_RICOVERATI]);
-	const lastTI = formatInt(dataset[REG_TERAPIA]);
-	const totCasi = formatInt(dataset[REG_TOT_CASI]);
-
+	const lastDate = lastDateAsString(dataset);
+	const regione = lastValueAsString(dataset, REG_DENOMINAZIONE);
+	const nuoviPos = lastValue(dataset, REG_NUOVI_POS);
+	const totDimessi = lastValue(dataset, REG_DIMESSI);
+	const totDeceduti = lastValue(dataset, REG_DECEDUTI);
+	const lastTotPos = lastValue(dataset, REG_TOT_POS);
+	const deltaTotPos = lastValueWithSign(dataset, REG_DELTA_TOT_POS);
+	const lastRic = lastValue(dataset, REG_RICOVERATI);
+	const deltaRic = deltaValueWithSign(dataset, REG_RICOVERATI);
+	const lastTI = lastValue(dataset, REG_TERAPIA);
+	const deltaTI = deltaValueWithSign(dataset, REG_TERAPIA);
+	const totCasi = lastValue(dataset, REG_TOT_CASI);
 	
 	let text = `<b>Regione ${regione}: aggiornamento del ${lastDate}.</b>`
 	text += `\nNelle ultime 24 ore ci sono stati <b>${nuoviPos}</b> nuovi casi di positività, per un totale di <b>${lastTotPos}</b> attualmente positivi (<b>${deltaTotPos}</b> rispetto a ieri).`;
-	text += `\nCi sono <b>${lastRic}</b> persone ricoverate in ospedale e <b>${lastTI}</b> persone in terapia intensiva.`;
+	text += `\nCi sono <b>${lastRic}</b> persone ricoverate in ospedale (<b>${deltaRic}</b> rispetto al giorno precedente) e <b>${lastTI}</b> persone in terapia intensiva (<b>${deltaTI}</b> rispetto al giorno precedente).`;
 	text += `\nDall'inizio dell'epidemia, la regione ha avuto un numero totale di <b>${totCasi}</b> casi, <b>${totDimessi}</b> guariti e <b>${totDeceduti}</b> vittime.`
 
 	return text;

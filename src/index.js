@@ -3,7 +3,7 @@ import telegrambot from 'node-telegram-bot-api';
 import Logger from './logger'
 import dotenv from 'dotenv'
 import botRedisConnector from './redis/covidbot-redis-connector';
-import {retrieveDailyData, retrieveRegioniData} from './datarecovery'
+import {retrieveDailyData, retrieveRegioniData, retrieveRegioniDataComplete} from './datarecovery'
 import {buildPlot, createDailyDigest} from './plotter';
 import * as messages from './messages';
 import {REGIONS} from './regions/regions-list';
@@ -40,7 +40,7 @@ let italianData = []
 /**
  * Global region-level data.
  */
-let regionalData = []
+let regionalDataFull = {}
 
 /**
  * Plot cache.
@@ -142,9 +142,11 @@ async function main(){
 		timing = process.hrtime(timing);
 		log.debug(`-> National data: retrieved ${italianData.length} records in ${printTime(timing)}.`)
 		timing = process.hrtime();
-		regionalData = await retrieveRegioniData()	
+		regionalDataFull = await retrieveRegioniDataComplete()	
 		timing = process.hrtime(timing);
-		log.debug(`-> Regional data: retrieved ${regionalData.length} records in ${printTime(timing)}.`)
+		let regionalDataRecordCount = 0;
+		Object.keys(regionalDataFull).forEach(key => regionalDataRecordCount += (regionalDataFull[key] || []).length);
+		log.debug(`-> Regional data : retrieved ${regionalDataRecordCount} records in ${printTime(timing)}.`)		
 	}
 	catch (err){
 		log.err(`Error during initial data retrieve: ${err.message}. Exiting.`)
@@ -235,9 +237,11 @@ async function sendAll(force=false) {
 
 				// Retrieve regional data
 				timing = process.hrtime();
-				regionalData = await retrieveRegioniData()	
+				regionalDataFull = await retrieveRegioniDataComplete()	
 				timing = process.hrtime(timing);
-				log.debug(`-> Regional data: retrieved ${regionalData.length} records in ${printTime(timing)}.`)				
+				let regionalDataRecordCount = 0;
+				Object.keys(regionalDataFull).forEach(key => regionalDataRecordCount += (regionalDataFull[key] || []).length);
+				log.debug(`-> Regional data : retrieved ${regionalDataRecordCount} records in ${printTime(timing)}.`)			
 		
 				// Rebuilding plots and digests
 				await buildMessagesCaches();
@@ -484,7 +488,7 @@ bot.on('callback_query', (callbackQuery) => {
 			break;
 
 		case 'region':
-			manageRegionCallback(bot, chat_id, message_id, data, regionalData);
+			manageRegionCallback(bot, chat_id, message_id, data, regionalDataFull);
 			break;
 
 		case 'areas_list':

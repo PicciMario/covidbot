@@ -215,3 +215,14 @@ export function lastDateAsString(dataset, key='data'){
 export function dateAsString(dataset, key='data'){
     return dataset[key].format('DD/MM/YYYY')
 }
+
+/**
+ * Content of the "key" of the last element of the dataset.
+ * @param {Object[]} dataset 
+ * @param {string} key
+ * @returns {string}
+ */
+export function lastValueAsString(dataset, key){
+    const lastElement = dataset[dataset.length-1];
+    return lastElement[key]
+}

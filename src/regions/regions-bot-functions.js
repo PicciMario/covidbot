@@ -36,13 +36,7 @@ export function manageRegionCallback(bot, chat_id, message_id, data, regionalDat
 		return;
 	}
 
-	const regionData = regionalData.find(candidate => candidate.codice_regione === reg.codice_regione)
-	if (regionData == null){
-		console.err(`Dati inesistenti per codice regione ${id_reg} in area ${id_area}.`)
-		return;
-	}
-
-	const text = createRegionDailyDigest(regionData);
+	const text = createRegionDailyDigest(regionalData[reg.codice_regione] || []);	
 
 	bot.editMessageText(
 		text,
