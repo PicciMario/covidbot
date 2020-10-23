@@ -1,4 +1,5 @@
 import TelegramBot from 'node-telegram-bot-api';
+import { createRegionDailyDigest } from './plotter';
 import {splitArray} from './utilities'
 
 // ------------------------------------------------------------------------------------------------
@@ -13,19 +14,23 @@ export const REGIONS = [
 		regions: [
 			{
 				id: 'lombardia',
-				descr: 'Lombardia'
+				descr: 'Lombardia',
+				codice_regione: 3
 			},
 			{
 				id: 'piemonte',
-				descr: 'Piemonte'
+				descr: 'Piemonte',
+				codice_regione: 1
 			},
 			{
 				id: 'valledaosta',
-				descr: 'Valle d\'Aosta'
+				descr: 'Valle d\'Aosta',
+				codice_regione: 2
 			},									
 			{
 				id: 'liguria',
-				descr: 'Liguria'
+				descr: 'Liguria',
+				codice_regione: 7
 			},
 		]
 	},
@@ -33,21 +38,37 @@ export const REGIONS = [
 		id: 'nordest',
 		descr: 'Nord-Est',
 		regions: [
+			/*
 			{
 				id: 'trentino',
-				descr: 'Trentino-Alto Adige'
+				descr: 'Trentino-Alto Adige',
+				codice_regione: 4
+			},
+			*/
+			{
+				id: 'bolzano',
+				descr: 'P.A. Bolzano',
+				codice_regione: 21
+			},
+			{
+				id: 'trento',
+				descr: 'P.A. Trento',
+				codice_regione: 22
 			},
 			{
 				id: 'veneto',
-				descr: 'Veneto'
+				descr: 'Veneto',
+				codice_regione: 5
 			},
 			{
 				id: 'friuli',
-				descr: 'Friuli-Venezia Giulia'
+				descr: 'Friuli-Venezia Giulia',
+				codice_regione: 6
 			},
 			{
 				id: 'emilia',
-				descr: 'Emilia-Romagna'
+				descr: 'Emilia-Romagna',
+				codice_regione: 8
 			}
 		]
 	},
@@ -57,19 +78,23 @@ export const REGIONS = [
 		regions: [
 			{
 				id: 'toscana',
-				descr: 'Toscana'
+				descr: 'Toscana',
+				codice_regione: 9
 			},
 			{
 				id: 'umbria',
-				descr: 'Umbria'
+				descr: 'Umbria',
+				codice_regione: 10
 			},
 			{
 				id: 'marche',
-				descr: 'Marche'
+				descr: 'Marche',
+				codice_regione: 11
 			},
 			{
 				id: 'lazio',
-				descr: 'Lazio'
+				descr: 'Lazio',
+				codice_regione: 12
 			}
 		]
 	},
@@ -79,27 +104,33 @@ export const REGIONS = [
 		regions: [
 			{
 				id: 'abruzzo',
-				descr: 'Abruzzo'
+				descr: 'Abruzzo',
+				codice_regione: 13
 			},
 			{
 				id: 'molise',
-				descr: 'Molise'
+				descr: 'Molise',
+				codice_regione: 14
 			},
 			{
 				id: 'campania',
-				descr: 'Campania'
+				descr: 'Campania',
+				codice_regione: 15
 			},
 			{
 				id: 'puglia',
-				descr: 'Puglia'
+				descr: 'Puglia',
+				codice_regione: 16
 			},
 			{
 				id: 'basilicata',
-				descr: 'Basilicata'
+				descr: 'Basilicata',
+				codice_regione: 17
 			},
 			{
 				id: 'calabria',
-				descr: 'Calabria'
+				descr: 'Calabria',
+				codice_regione: 18
 			},															
 		]
 	},
@@ -109,11 +140,13 @@ export const REGIONS = [
 		regions: [
 			{
 				id: 'sicilia',
-				descr: 'Sicilia'
+				descr: 'Sicilia',
+				codice_regione: 19
 			},
 			{
 				id: 'sardegna',
-				descr: 'Sardegna'
+				descr: 'Sardegna',
+				codice_regione: 20
 			},			
 		]
 	}
@@ -125,8 +158,9 @@ export const REGIONS = [
  * @param {string} chat_id 
  * @param {string} message_id 
  * @param {{id_area:string, id_reg:string}} data 
+ * @param {object[]} regionalData
  */
-export function manageRegionCallback(bot, chat_id, message_id, data){
+export function manageRegionCallback(bot, chat_id, message_id, data, regionalData){
 	
 	const {id_area, id_reg} = data;
 
@@ -142,8 +176,16 @@ export function manageRegionCallback(bot, chat_id, message_id, data){
 		return;
 	}
 
+	const regionData = regionalData.find(candidate => candidate.codice_regione === reg.codice_regione)
+	if (regionData == null){
+		console.err(`Dati inesistenti per codice regione ${id_reg} in area ${id_area}.`)
+		return;
+	}
+
+	const text = createRegionDailyDigest(regionData);
+
 	bot.editMessageText(
-		`Hai chiesto informazioni circa la regione: ${reg.descr}`,
+		text,
 		{
 			chat_id: chat_id,
 			message_id: message_id,
@@ -151,7 +193,8 @@ export function manageRegionCallback(bot, chat_id, message_id, data){
 				inline_keyboard: [
 					[]
 				]
-			}					
+			},
+			parse_mode: 'HTML'					
 		}
 	)		
 

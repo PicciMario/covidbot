@@ -3,7 +3,7 @@ import telegrambot from 'node-telegram-bot-api';
 import Logger from './logger'
 import dotenv from 'dotenv'
 import botRedisConnector from './botRedisConnector';
-import {retrieveDailyData} from './datarecovery'
+import {retrieveDailyData, retrieveRegioniData} from './datarecovery'
 import {buildPlot, createDailyDigest} from './plotter';
 import * as messages from './messages';
 import * as Regions from './regions';
@@ -32,11 +32,23 @@ process.env.NTBA_FIX_350 = true;
 const log = new Logger("index.js")
 
 /**
- * Data retrieved stored as local variable.
+ * Global nation-level data.
  */
 let italianData = []
 
+/**
+ * Global region-level data.
+ */
+let regionalData = []
+
+/**
+ * Plot cache.
+ */
 let plotBuffer = null;
+
+/**
+ * Digest text cache.
+ */
 let digestText = null;
 
 let scheduledTask = null;
@@ -118,16 +130,20 @@ async function buildMessagesCaches(){
  */
 async function main(){
 
-	log.debug('Retrieving italian nation-level data...')
+	log.debug('Retrieving italian data...')
 
 	let timing;
 
 	// Initial data retrieve
 	try{
 		timing = process.hrtime();
-		italianData = await retrieveDailyData()
+		italianData = await retrieveDailyData()		
 		timing = process.hrtime(timing);
-		log.debug(`-> Retrieved ${italianData.length} records in ${printTime(timing)}.`)
+		log.debug(`-> National data: retrieved ${italianData.length} records in ${printTime(timing)}.`)
+		timing = process.hrtime();
+		regionalData = await retrieveRegioniData()	
+		timing = process.hrtime(timing);
+		log.debug(`-> Regional data: retrieved ${regionalData.length} records in ${printTime(timing)}.`)
 	}
 	catch (err){
 		log.err(`Error during initial data retrieve: ${err.message}. Exiting.`)
@@ -215,6 +231,12 @@ async function sendAll(force=false) {
 
 				italianData = data;
 				await redisclient.setLastRetrieveTimestampAsNow();
+
+				// Retrieve regional data
+				timing = process.hrtime();
+				regionalData = await retrieveRegioniData()	
+				timing = process.hrtime(timing);
+				log.debug(`-> Regional data: retrieved ${regionalData.length} records in ${printTime(timing)}.`)				
 		
 				// Rebuilding plots and digests
 				await buildMessagesCaches();
@@ -436,7 +458,7 @@ bot.onText(/\/regioni/, (msg, match) => {
 	const opts = {
 		reply_markup: {
 			inline_keyboard: splitArray(keyboard, 3)
-		}
+		}		
 	}
 
 	bot.sendMessage(msg.from.id, 'Dati regionali. Seleziona area:', opts);
@@ -461,7 +483,7 @@ bot.on('callback_query', (callbackQuery) => {
 			break;
 
 		case 'region':
-			Regions.manageRegionCallback(bot, chat_id, message_id, data);
+			Regions.manageRegionCallback(bot, chat_id, message_id, data, regionalData);
 			break;
 
 		case 'areas_list':

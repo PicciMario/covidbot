@@ -33,8 +33,8 @@ function _sortByDateColumn(a, b, dateColumn = 'data'){
 
 /**
  * Retrieves italian state-level daily data. Returns a promise which resolves
- * on the data array. The "data" item in the records is converted to a moment object, 
- * and the array is sorted by that. 
+ * on the data array. The "data" item in the records is converted to a moment object.
+ * @returns {Promise<Array>}
  */
 export function retrieveDailyData(){
 
@@ -64,6 +64,58 @@ export function retrieveDailyData(){
 						JSON.parse(data)
 						.map(elem => _parseAndConvertDate(elem))
 						.sort((a,b) => _sortByDateColumn(a, b))			
+
+					resolve(parsed);
+
+				}
+				catch(err){
+					reject(new Error(`Error while parsing retrieved data: ${err.message}`));
+				}
+
+			})
+
+		}).on('error', (e) => {
+			reject(new Error(`Unexpected error while fetching data: ${e.message}`));
+		});
+
+	});
+
+}
+
+// ------------------------------------------------------------------------------------------------
+
+/**
+ * Retrieves italian region-level daily data. Returns a promise which resolves
+ * on the data array. The "data" item in the records is converted to a moment object.
+* @returns {Promise<Array>}
+ */
+export function retrieveRegioniData(){
+
+	return new Promise((resolve, reject) => {
+
+		https.get(REGIONI_LATEST, resp => {
+
+			const { statusCode } = resp;
+
+			if (statusCode !== 200) {
+				// Consume response data to free up memory
+				resp.resume();
+				reject(new Error(`Request failed while fetching data. Status Code: ${statusCode}`));
+			}
+			
+			let data = ''
+
+			// Accumulates data retrieved from socket
+			resp.on('data', chunk => data += chunk)
+			
+			// Collects and parses received data after finishing retrieval
+			resp.on('end', () => {
+
+				try{
+
+					let parsed = 
+						JSON.parse(data)
+						.map(elem => _parseAndConvertDate(elem))		
 
 					resolve(parsed);
 

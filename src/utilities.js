@@ -205,3 +205,13 @@ export function lastDateAsString(dataset, key='data'){
     }    
 
 }
+
+/**
+ * Formatted date from the "key" of the dataset object.
+ * @param {Object} dataset 
+ * @param {string} [key="data"]
+ * @returns {string}
+ */
+export function dateAsString(dataset, key='data'){
+    return dataset[key].format('DD/MM/YYYY')
+}
