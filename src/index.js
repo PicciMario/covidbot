@@ -462,7 +462,7 @@ bot.onText(/\/regioni/, (msg, match) => {
 		}		
 	}
 
-	bot.sendMessage(msg.from.id, 'Dati regionali. Seleziona area:', opts);
+	bot.sendMessage(msg.chat.id, 'Dati regionali. Seleziona area:', opts);
 
 })
 
