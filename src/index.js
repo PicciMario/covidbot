@@ -2,7 +2,7 @@ import cron from 'node-cron';
 import telegrambot from 'node-telegram-bot-api';
 import Logger from './logger'
 import dotenv from 'dotenv'
-import botRedisConnector from './botRedisConnector';
+import botRedisConnector from './redis/covidbot-redis-connector';
 import {retrieveDailyData, retrieveRegioniData} from './datarecovery'
 import {buildPlot, createDailyDigest} from './plotter';
 import * as messages from './messages';

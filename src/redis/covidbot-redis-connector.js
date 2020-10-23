@@ -1,4 +1,11 @@
-const { default: redisConnector } = require("./redisConnector");
+/**
+ * CovidBot-specific REDIS functions library.
+ *
+ * @link    https://github.com/PicciMario/covidbot
+ * @author  Mario Piccinelli <mario.piccinelli@gmail.com>
+ */
+
+const { default: redisConnector } = require("./redis-connector");
 import moment from 'moment'
 
 // ------------------------------------------------------------------------------------------------

@@ -1,5 +1,12 @@
+/**
+ * Custom REDIS connection class.
+ *
+ * @link    https://github.com/PicciMario/covidbot
+ * @author  Mario Piccinelli <mario.piccinelli@gmail.com>
+ */
+
 import Redis from 'redis';
-import Logger from './logger'
+import Logger from '../logger'
 
 // Init logger
 const log = new Logger("redisConnector.js")
@@ -7,6 +14,9 @@ const log = new Logger("redisConnector.js")
 // Seconds between redis connection attempts
 const SECONDS_REDIS_CONN_RETRY = 10;
 
+/**
+ * Custom REDIS connector.
+ */
 export default class redisConnector{
 
     /**
@@ -35,7 +45,7 @@ export default class redisConnector{
 
     /**
      * REDIS connect/reconnect strategy.
-     * @param {*} param0 
+     * @param {error, total_retry_time, attempt} param0 
      */
     _redis_retry_strategy = ({error, total_retry_time, attempt}) => {
 

@@ -1,3 +1,10 @@
+/**
+ * REDIS functions wrapped inside Javascript Promises.
+ *
+ * @link    https://github.com/PicciMario/covidbot
+ * @author  Mario Piccinelli <mario.piccinelli@gmail.com>
+ */
+
 export function get(redisclient, key){
 	return new Promise((resolve, reject) => {
 		redisclient.get(key, (err, value) => {
