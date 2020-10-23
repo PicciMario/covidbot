@@ -6,7 +6,8 @@ import botRedisConnector from './redis/covidbot-redis-connector';
 import {retrieveDailyData, retrieveRegioniData} from './datarecovery'
 import {buildPlot, createDailyDigest} from './plotter';
 import * as messages from './messages';
-import * as Regions from './regions';
+import {REGIONS} from './regions/regions-list';
+import {manageAreaCallback, manageRegionCallback, manageAreasListCallback} from './regions/regions-bot-functions'
 import { splitArray } from './utilities';
 
 // Bot version
@@ -447,7 +448,7 @@ bot.onText(/\/clear/, (msg) => {
 
 bot.onText(/\/regioni/, (msg, match) => {
 
-	const keyboard = Regions.REGIONS.map(area => ({
+	const keyboard = REGIONS.map(area => ({
 		text: area.descr,
 		callback_data: JSON.stringify({
 			type: 'area',
@@ -479,15 +480,15 @@ bot.on('callback_query', (callbackQuery) => {
 	switch(type){
 
 		case 'area':
-			Regions.manageAreaCallback(bot, chat_id, message_id, data);
+			manageAreaCallback(bot, chat_id, message_id, data);
 			break;
 
 		case 'region':
-			Regions.manageRegionCallback(bot, chat_id, message_id, data, regionalData);
+			manageRegionCallback(bot, chat_id, message_id, data, regionalData);
 			break;
 
 		case 'areas_list':
-			Regions.showAreasList(bot, chat_id, message_id);
+			manageAreasListCallback(bot, chat_id, message_id);
 			break;		
 
 	}
