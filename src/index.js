@@ -9,7 +9,7 @@ import * as messages from './messages';
 import {REGIONS} from './regions/regions-list';
 import {manageAreaCallback, manageRegionCallback, manageAreasListCallback, sendRegionData} from './regions/regions-bot-functions'
 import {findRegionByName} from './regions/regions-utilities'
-import { splitArray } from './utilities';
+import {splitArray, printTime} from './utilities';
 
 // Bot version
 const VERSION = '1.3.1';
@@ -94,20 +94,6 @@ redisclient
 	});
 
 // ------------------------------------------------------------------------------------------------
-
-/**
- * Prints formatted result from "process.hrtime()" call.
- * @param {number[]} param0 
- * @returns {string}
- */
-function printTime([sec, nanosec]){
-	if (sec === 0){
-		return `${Math.ceil(nanosec/1000000)}ms`
-	}
-	else {
-		return `${sec}s ${Math.ceil(nanosec/1000000)}ms`
-	}
-}
 
 async function buildMessagesCaches(){
 
@@ -455,7 +441,7 @@ bot.onText(/\/clear/, (msg) => {
  * Matches command /region, /regione, /regioni.
  * Also, accepts region name as option.
  */
-bot.onText(/\/region[ie]?([ ]+([a-zA-Z]+))?/, (msg, match) => {
+bot.onText(/\/region[ie]?([ ]+([a-zA-Z]+))?/, async (msg, match) => {
 
 	if (match[2]){
 
@@ -473,11 +459,14 @@ bot.onText(/\/region[ie]?([ ]+([a-zA-Z]+))?/, (msg, match) => {
 			);
 
 			return;
-			
+
 		}
 
+		let timing = process.hrtime();
 		const dataset = regionalDataFull[reg.codice_regione]
-		sendRegionData(bot, msg.chat.id, dataset);
+		await sendRegionData(bot, msg.chat.id, dataset);
+		timing = process.hrtime(timing);
+		log.debug(`Sent requested regional data (${reg.descr}) to chat id: ${msg.chat.id} (in ${printTime(timing)}).`);
 		
 		return;
 

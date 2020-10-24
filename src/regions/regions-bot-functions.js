@@ -7,8 +7,12 @@
 
 import TelegramBot from 'node-telegram-bot-api';
 import {createRegionDailyDigest} from './regions-output';
-import {splitArray} from '../utilities'
+import {splitArray, printTime} from '../utilities'
 import {REGIONS} from './regions-list'
+import Logger from '../logger'
+
+// Init logger
+const log = new Logger("index.js")
 
 // ------------------------------------------------------------------------------------------------
 
@@ -20,7 +24,7 @@ import {REGIONS} from './regions-list'
  * @param {{id_area:string, id_reg:string}} data 
  * @param {object[]} regionalData
  */
-export function manageRegionCallback(bot, chat_id, message_id, data, regionalData){
+export async function manageRegionCallback(bot, chat_id, message_id, data, regionalData){
 	
 	const {id_area, id_reg} = data;
 
@@ -36,9 +40,11 @@ export function manageRegionCallback(bot, chat_id, message_id, data, regionalDat
 		return;
 	}
 
+	let timing = process.hrtime();
+
 	const text = createRegionDailyDigest(regionalData[reg.codice_regione] || []);	
 
-	bot.editMessageText(
+	await bot.editMessageText(
 		text,
 		{
 			chat_id: chat_id,
@@ -51,6 +57,9 @@ export function manageRegionCallback(bot, chat_id, message_id, data, regionalDat
 			parse_mode: 'HTML'					
 		}
 	)		
+
+	timing = process.hrtime(timing);
+	log.debug(`Sent browsed regional data (${reg.descr}) to chat id: ${chat_id} (in ${printTime(timing)}).`);
 
 }
 
@@ -135,11 +144,11 @@ export function manageAreasListCallback(bot, chat_id, message_id){
  * @param {number} chat_id 
  * @param {object[]} regionDataset Dataset of the chosen region.
  */
-export function sendRegionData(bot, chat_id, regionDataset){
+export async function sendRegionData(bot, chat_id, regionDataset){
 	
 	const text = createRegionDailyDigest(regionDataset);	
 
-	bot.sendMessage(
+	await bot.sendMessage(
 		chat_id,
 		text,
 		{parse_mode: 'HTML'}

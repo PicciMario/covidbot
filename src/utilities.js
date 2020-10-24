@@ -23,6 +23,22 @@ numeral.locale('it');
 // ------------------------------------------------------------------------------------------------
 
 /**
+ * Prints formatted result from "process.hrtime()" call.
+ * @param {number[]} param0 
+ * @returns {string}
+ */
+export function printTime([sec, nanosec]){
+	if (sec === 0){
+		return `${Math.ceil(nanosec/1000000)}ms`
+	}
+	else {
+		return `${sec}s ${Math.ceil(nanosec/1000000)}ms`
+	}
+}
+
+// ------------------------------------------------------------------------------------------------
+
+/**
  * Splits the array in subarrays, each one containing "number" elements 
  * (except maybe the last one).
  * @param {[]} origin 
