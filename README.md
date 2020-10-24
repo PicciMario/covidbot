@@ -8,6 +8,11 @@ Play with it, just look for [@italiandailycovidbot](https://t.me/italiandailycov
 Simple Telegram bot written in NodeJS. Retrieves italian state-level COVID-19 infection numbers from the Italian Civil Protection [GitHub repository](https://github.com/pcm-dpc/COVID-19) and provides upon request a plot of the last 3 months values. Also, an user can subscribe and receive updates every evening at about 5pm (new data is published daily around that time).
 
 ![Sample plot](/sampleplot.jpg)
+![Sample digest](/sampledigest.jpg)
+
+Also, the bot now sports a region-level digest with plot:
+
+![Sample region](/sampleregion.jpg)
 
 ## Supported commands
 
@@ -16,14 +21,16 @@ Simple Telegram bot written in NodeJS. Retrieves italian state-level COVID-19 in
 - **/status** - Subscription status
 - **/plot** - Request actual situation plot
 - **/digest** - Request daily digest
+- **/region** - Request daily region-level digest and plot
+- **/region name** - As above, for a specific region
 - **/about** - About
 - **/help** - Commands list
 
 ## Technical details
 
-The code implements a simple bot by leveraging the *node-telegram-bot-api* library. Upon startup, it downloads and parses COVID-19 data from the Italian Civil Protection [GitHub repository](https://github.com/pcm-dpc/COVID-19); then, upon **/plot** request, it creates a plot and sends it to the requestor as a PNG image.
+The code implements a simple bot by leveraging the *node-telegram-bot-api* library. Upon startup, it downloads and parses COVID-19 data from the Italian Civil Protection [GitHub repository](https://github.com/pcm-dpc/COVID-19); then, upon **/plot** request, it creates a plot and sends it to the requestor as a PNG image. There is also a **/digest** feature for a daily text digest, and a **/region** command for region-level data and plot.
 
-There is also a simplified subscription feature, by which an user can request to be subscribed to daily updates (either in a private chat with the bot or inside any other chat you've added the bot to). The bot will store the chat id of the request (in a REDIS server). Every day at around 5pm (italian time) new COVID-19 data is retrieveda and then the plot function is invoked for all the subscribers, who will subsequently receive the new plot.
+The bot also has a simplified subscription feature, by which an user can request to be subscribed to daily updates (either in a private chat with the bot or inside any other chat the bot has been added to). The bot will store the chat id of the request (in a REDIS server). Every day at around 5pm (italian time) new COVID-19 data is retrieved and then the plot function is invoked for all the subscribers, who will subsequently receive the new plot.
 
 ## How to run as-is
 
