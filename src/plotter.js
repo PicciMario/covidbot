@@ -56,6 +56,7 @@ export function createDailyDigest(dataset){
 	text += `\nCi sono <b>${lastRIC}</b> persone ricoverate in ospedale (<b>${deltaRIC}</b> rispetto al giorno precedente) e <b>${lastTI}</b> persone in terapia intensiva (<b>${deltaTI}</b> rispetto al giorno precedente).`;
 	text += `\nSono stati svolti <b>${deltaTamp}</b> tamponi, di cui sono risultati positivi <b>${percPosSuTamponiOggi}%</b> `
 	text += `(ieri era <b>${percPosSuTamponiIeri}%</b> su <b>${deltaTampIeri}</b> tamponi).`;
+	text += `\n\nUsa il comando <b>/regione</b> per visualizzare aggiornamenti specifici per regione.`
 
 	return text;
 

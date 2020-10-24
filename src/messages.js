@@ -37,13 +37,17 @@ Iscriviti /sub per ricevere aggiornamenti sulla situazione COVID in Italia, ogni
   /status - Stato iscrizione
   /plot - Richiedi grafico
   /digest - Richiedi aggiornamento
+  /regione - Richiedi aggiornamento per regione
+  /regione nome - Richiedi aggiornamento per una regione
   /about - Informazioni sul bot
   /help - Lista comandi`
 	)
 }
 
 export function photoCaption(){
-	return `Maggiori informazioni sulla situazione odierna: /digest`;
+	let text = `Maggiori informazioni sulla situazione odierna: /digest`;
+	text += '\nNovità: usa il comando /regioni per visualizzare gli ultimi aggiornamenti per regione.'
+	return text;
 }
 
 export function subRequested(){
