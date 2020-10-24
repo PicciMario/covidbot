@@ -207,13 +207,15 @@ async function sendAll(force=false) {
 		timing = process.hrtime();
 		const data = await retrieveDailyData()
 		timing = process.hrtime(timing);
-		log.debug(`-> Retrieved ${italianData.length} records in ${printTime(timing)}.`)
+		log.debug(`-> Retrieved ${data.length} records in ${printTime(timing)}.`)
 
 		const lastRetrievedElement = data[data.length-1];
 		if (lastRetrievedElement){
 
 			const lastElementsDate = lastRetrievedElement['data'].format(REDIS_LASTVALIDDATE_FORMAT);
 			const storedLastValidDate = await redisclient.getLastValidDate();
+
+			log.debug(`-> Retrieved dataset with latest date ${lastElementsDate}, comparing to current last date ${storedLastValidDate}...`)
 			
 			if (lastElementsDate !== storedLastValidDate || force === true){
 
