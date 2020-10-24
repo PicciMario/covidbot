@@ -12,7 +12,7 @@ import {findRegionByName} from './regions/regions-utilities'
 import {splitArray, printTime} from './utilities';
 
 // Bot version
-const VERSION = '1.3.1';
+const VERSION = '1.4.0';
 
 // Date format for the REDIS_LASTVALIDDATE Redis key content.
 const REDIS_LASTVALIDDATE_FORMAT = 'DD MMM YYYY HH:mm:SS';
