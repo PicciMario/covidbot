@@ -6,7 +6,7 @@
  */
 
 import TelegramBot from 'node-telegram-bot-api';
-import {createRegionDailyDigest} from './regions-output';
+import {createRegionDailyDigest, createRegionalPlot} from './regions-output';
 import {splitArray, printTime} from '../utilities'
 import {REGIONS} from './regions-list'
 import Logger from '../logger'
@@ -55,6 +55,18 @@ export async function manageRegionCallback(bot, chat_id, message_id, data, regio
 				]
 			},
 			parse_mode: 'HTML'					
+		}
+	)		
+
+	const plot = await createRegionalPlot(regionalData[reg.codice_regione], reg)
+
+	await bot.sendPhoto(
+		chat_id, 
+		plot,
+		{},
+		{
+			filename: 'plot.png',
+			contentType: 'image/png'
 		}
 	)		
 
@@ -143,8 +155,9 @@ export function manageAreasListCallback(bot, chat_id, message_id){
  * @param {TelegramBot} bot 
  * @param {number} chat_id 
  * @param {object[]} regionDataset Dataset of the chosen region.
+ * @param {object} regionObject Region object.
  */
-export async function sendRegionData(bot, chat_id, regionDataset){
+export async function sendRegionData(bot, chat_id, regionDataset, regionObject){
 	
 	const text = createRegionDailyDigest(regionDataset);	
 
@@ -152,6 +165,18 @@ export async function sendRegionData(bot, chat_id, regionDataset){
 		chat_id,
 		text,
 		{parse_mode: 'HTML'}
+	)	
+
+	const plot = await createRegionalPlot(regionDataset, regionObject)
+
+	await bot.sendPhoto(
+		chat_id, 
+		plot,
+		{},
+		{
+			filename: 'plot.png',
+			contentType: 'image/png'
+		}
 	)	
 
 }

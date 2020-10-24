@@ -464,7 +464,7 @@ bot.onText(/\/region[ie]?([ ]+([a-zA-Z]+))?/, async (msg, match) => {
 
 		let timing = process.hrtime();
 		const dataset = regionalDataFull[reg.codice_regione]
-		await sendRegionData(bot, msg.chat.id, dataset);
+		await sendRegionData(bot, msg.chat.id, dataset, reg);
 		timing = process.hrtime(timing);
 		log.debug(`Sent requested regional data (${reg.descr}) to chat id: ${msg.chat.id} (in ${printTime(timing)}).`);
 		

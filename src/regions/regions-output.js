@@ -54,3 +54,45 @@ export function createRegionDailyDigest(dataset){
 	return text;
 
 }
+
+/**
+ * Creates histogram with daily new infections. Returns a PNG stream inside a Buffer.
+ * @param {Object[]} fullDataset Dataset for the region.
+ * @param {Object} regionObject Region object.
+ * @returns {Promise<Buffer>}
+ */
+export function createRegionalPlot(fullDataset, regionObject) {
+
+    const dataset = sliceDataset(fullDataset)
+
+    const nuoviPOS = lastValueWithSign(dataset, REG_NUOVI_POS);
+
+    const configuration = {
+        type: 'bar',
+        data: {
+            labels: dataset.map(element => element['data'].format('DD MMM')),
+            datasets: [
+                {
+					label: `Nuovi positivi (${nuoviPOS})`,
+					backgroundColor: 'blue',
+					borderColor: 'blue',
+					data: dataset.map(element => element[REG_NUOVI_POS])
+				},
+            ]
+        },
+        options: {
+			title: {
+				display: true,
+				text: `Andamento nuovi casi in ${regionObject.descr} al ${lastDateAsString(dataset)} (${nuoviPOS})`
+			},
+			legend: {
+				position: 'bottom',
+				display: false
+			}
+        }
+    };
+
+    const canvasRenderService = new CanvasRenderService(500, 250);
+	return canvasRenderService.renderToBuffer(configuration, 'image/png');
+	
+}
