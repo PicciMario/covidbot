@@ -128,3 +128,21 @@ export function manageAreasListCallback(bot, chat_id, message_id){
 	)
 
 }
+
+/**
+ * Sends digest for the region whose dataset is provided.
+ * @param {TelegramBot} bot 
+ * @param {number} chat_id 
+ * @param {object[]} regionDataset Dataset of the chosen region.
+ */
+export function sendRegionData(bot, chat_id, regionDataset){
+	
+	const text = createRegionDailyDigest(regionDataset);	
+
+	bot.sendMessage(
+		chat_id,
+		text,
+		{parse_mode: 'HTML'}
+	)	
+
+}

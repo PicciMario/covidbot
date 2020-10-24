@@ -3,11 +3,12 @@ import telegrambot from 'node-telegram-bot-api';
 import Logger from './logger'
 import dotenv from 'dotenv'
 import botRedisConnector from './redis/covidbot-redis-connector';
-import {retrieveDailyData, retrieveRegioniData, retrieveRegioniDataComplete} from './datarecovery'
+import {retrieveDailyData, retrieveRegioniDataComplete} from './datarecovery'
 import {buildPlot, createDailyDigest} from './plotter';
 import * as messages from './messages';
 import {REGIONS} from './regions/regions-list';
-import {manageAreaCallback, manageRegionCallback, manageAreasListCallback} from './regions/regions-bot-functions'
+import {manageAreaCallback, manageRegionCallback, manageAreasListCallback, sendRegionData} from './regions/regions-bot-functions'
+import {findRegionByName} from './regions/regions-utilities'
 import { splitArray } from './utilities';
 
 // Bot version
@@ -450,7 +451,37 @@ bot.onText(/\/clear/, (msg) => {
 })
 */
 
-bot.onText(/\/regioni/, (msg, match) => {
+/**
+ * Matches command /region, /regione, /regioni.
+ * Also, accepts region name as option.
+ */
+bot.onText(/\/region[ie]?([ ]+([a-zA-Z]+))?/, (msg, match) => {
+
+	if (match[2]){
+
+		const regSearch = match[2];
+		const reg = findRegionByName(regSearch);
+		
+		if (!reg){
+			
+			const errorMess = `Nessuna regione individuata. La sintassi corretta è \n<b>/regione parte_del_nome</b>\n(esempio: /regione lomb, /regione trento)`
+			
+			bot.sendMessage(
+				msg.chat.id, 
+				errorMess, 
+				{parse_mode: 'HTML'}
+			);
+
+			return;
+			
+		}
+
+		const dataset = regionalDataFull[reg.codice_regione]
+		sendRegionData(bot, msg.chat.id, dataset);
+		
+		return;
+
+	}
 
 	const keyboard = REGIONS.map(area => ({
 		text: area.descr,
