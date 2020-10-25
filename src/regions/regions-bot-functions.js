@@ -12,7 +12,7 @@ import {REGIONS} from './regions-list'
 import Logger from '../logger'
 
 // Init logger
-const log = new Logger("index.js")
+const log = new Logger("regions-bot-funcs")
 
 // ------------------------------------------------------------------------------------------------
 

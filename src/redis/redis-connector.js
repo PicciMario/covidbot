@@ -9,7 +9,7 @@ import Redis from 'redis';
 import Logger from '../logger'
 
 // Init logger
-const log = new Logger("redisConnector.js")
+const log = new Logger("redis-connector")
 
 // Seconds between redis connection attempts
 const SECONDS_REDIS_CONN_RETRY = 10;

@@ -31,7 +31,7 @@ const DEVELOPMENT = process.env.NODE_ENV  === 'development'
 process.env.NTBA_FIX_350 = true;
 
 // Init logger
-const log = new Logger("index.js")
+const log = new Logger("index")
 
 /**
  * Global nation-level data.

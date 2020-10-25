@@ -6,7 +6,10 @@
  */
 
 const { default: redisConnector } = require("./redis-connector");
-import moment from 'moment'
+import moment from 'moment';
+import Logger from '../logger';
+
+const log = new Logger("covidbot-redis-conn")
 
 // ------------------------------------------------------------------------------------------------
 
@@ -39,6 +42,7 @@ export default class botRedisConnector extends redisConnector{
      * @param {Promise} value 
      */
     setLastValidDate(value){
+		log.debug(`Imposto ultima data valida per dataset attualmente a disposizione: ${value}.`);
         return this.set(REDIS_LASTVALIDDATE, value)
     }
     
@@ -56,6 +60,7 @@ export default class botRedisConnector extends redisConnector{
      * @returns {Promise}
      */
     setLastRetrieveTimestamp(value){
+		log.debug(`Imposto timestamp recupero dataset: ${value}.`);
         return this.set(REDIS_LASTRETRIEVETIMESTAMP, value)
     }
 
@@ -64,7 +69,9 @@ export default class botRedisConnector extends redisConnector{
      * @returns {Promise}
      */    
     setLastRetrieveTimestampAsNow(){
-        return this.set(REDIS_LASTRETRIEVETIMESTAMP, moment().format('DD/MMM/YYYY HH:mm:SS'));
+		const value = moment().format('DD/MMM/YYYY HH:mm:SS');
+		log.debug(`Imposto timestamp recupero dataset: ${value} (adesso).`);
+        return this.set(REDIS_LASTRETRIEVETIMESTAMP, value);
     }
 
     /**

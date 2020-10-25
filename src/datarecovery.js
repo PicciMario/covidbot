@@ -3,7 +3,7 @@ import moment from 'moment'
 import Logger from './logger'
 
 // Init logger
-const log = new Logger("datarecovery.js")
+const log = new Logger("datarecovery")
 
 const REGIONI_LATEST = 'https://raw.githubusercontent.com/pcm-dpc/COVID-19/master/dati-json/dpc-covid19-ita-regioni-latest.json';
 const REGIONI_FULL = 'https://raw.githubusercontent.com/pcm-dpc/COVID-19/master/dati-json/dpc-covid19-ita-regioni.json';
