@@ -602,8 +602,8 @@ bot.onText(/\/provinc[iae]*([ ]+([a-zA-Z]+))?/, async (msg, match) => {
 	.slice(0, 10)
 
 	const lastDate = lastDateAsString(data);
-	let text = `<b>Province con il maggior numero di nuovi casi (al ${lastDate}):</b>\n`;
-	data.forEach(item => text += `\n ${item.nuovi_casi.toString().padStart(5, ' ')} -> ${item.denominazione_provincia}`)
+	let text = `<b>Province con il maggior numero di nuovi casi</b>\n(aggiornato al ${lastDate})\n`;
+	data.forEach(item => text += `\n ${item.nuovi_casi.toString().padStart(5, ' ')} - prov. di ${item.denominazione_provincia} (totale: ${item.totale_casi})`)
 
 	bot.sendMessage(msg.chat.id, text, {parse_mode: 'HTML'});
 
