@@ -42,7 +42,7 @@ export default class botRedisConnector extends redisConnector{
      * @param {Promise} value 
      */
     setLastValidDate(value){
-		log.debug(`Imposto ultima data valida per dataset attualmente a disposizione: ${value}.`);
+		log.debug(`Saving timestamp for last valid data point: ${value}.`);
         return this.set(REDIS_LASTVALIDDATE, value)
     }
     
@@ -60,7 +60,7 @@ export default class botRedisConnector extends redisConnector{
      * @returns {Promise}
      */
     setLastRetrieveTimestamp(value){
-		log.debug(`Imposto timestamp recupero dataset: ${value}.`);
+		log.debug(`Setting dataset retrieval timestamp: ${value}.`);
         return this.set(REDIS_LASTRETRIEVETIMESTAMP, value)
     }
 
@@ -70,7 +70,7 @@ export default class botRedisConnector extends redisConnector{
      */    
     setLastRetrieveTimestampAsNow(){
 		const value = moment().format('DD/MMM/YYYY HH:mm:SS');
-		log.debug(`Imposto timestamp recupero dataset: ${value} (adesso).`);
+		log.debug(`Setting dataset retrieval timestamp: ${value} (now).`);
         return this.set(REDIS_LASTRETRIEVETIMESTAMP, value);
     }
 
