@@ -3,13 +3,16 @@ import telegrambot from 'node-telegram-bot-api';
 import Logger from './logger'
 import dotenv from 'dotenv'
 import botRedisConnector from './redis/covidbot-redis-connector';
-import {retrieveDailyData, retrieveRegioniDataComplete} from './datarecovery'
+import {retrieveDailyData, retrieveProvinceDataComplete, retrieveRegioniDataComplete} from './datarecovery'
 import {buildPlot, createDailyDigest} from './plotter';
 import * as messages from './messages';
 import {REGIONS} from './regions/regions-list';
+import {PROVINCES} from './provinces/provinces-list';
 import {manageAreaCallback, manageRegionCallback, manageAreasListCallback, sendRegionData} from './regions/regions-bot-functions'
 import {findRegionByName} from './regions/regions-utilities'
-import {splitArray, printTime} from './utilities';
+import {findProvinceByName} from './provinces/provinces-utilities'
+import {sendProvinceData} from './provinces/provinces-bot-functions'
+import {splitArray, printTime, lastDateAsString} from './utilities';
 
 // Bot version
 const VERSION = '1.4.0';
@@ -42,6 +45,11 @@ let italianData = []
  * Global region-level data.
  */
 let regionalDataFull = {}
+
+/**
+ * Global province-level data.
+ */
+let provincialDataFull = {}
 
 /**
  * Plot cache.
@@ -124,16 +132,26 @@ async function main(){
 
 	// Initial data retrieve
 	try{
+
 		timing = process.hrtime();
 		italianData = await retrieveDailyData()		
 		timing = process.hrtime(timing);
 		log.debug(`-> National data: retrieved ${italianData.length} records in ${printTime(timing)}.`)
+
 		timing = process.hrtime();
 		regionalDataFull = await retrieveRegioniDataComplete()	
 		timing = process.hrtime(timing);
 		let regionalDataRecordCount = 0;
 		Object.keys(regionalDataFull).forEach(key => regionalDataRecordCount += (regionalDataFull[key] || []).length);
-		log.debug(`-> Regional data : retrieved ${regionalDataRecordCount} records in ${printTime(timing)}.`)		
+		log.debug(`-> Regional data : retrieved ${regionalDataRecordCount} records in ${printTime(timing)}.`)	
+		
+		timing = process.hrtime();
+		provincialDataFull = await retrieveProvinceDataComplete()	
+		timing = process.hrtime(timing);
+		let provincialDataRecordCount = 0;
+		Object.keys(provincialDataFull).forEach(key => provincialDataRecordCount += (provincialDataFull[key] || []).length);
+		log.debug(`-> Provincial data : retrieved ${provincialDataRecordCount} records in ${printTime(timing)}.`)			
+
 	}
 	catch (err){
 		log.err(`Error during initial data retrieve: ${err.message}. Exiting.`)
@@ -230,7 +248,15 @@ async function sendAll(force=false) {
 				timing = process.hrtime(timing);
 				let regionalDataRecordCount = 0;
 				Object.keys(regionalDataFull).forEach(key => regionalDataRecordCount += (regionalDataFull[key] || []).length);
-				log.debug(`-> Regional data : retrieved ${regionalDataRecordCount} records in ${printTime(timing)}.`)			
+				log.debug(`-> Regional data : retrieved ${regionalDataRecordCount} records in ${printTime(timing)}.`)	
+				
+				// Retrieve provincial data
+				timing = process.hrtime();
+				provincialDataFull = await retrieveProvinceDataComplete()	
+				timing = process.hrtime(timing);
+				let provincialDataRecordCount = 0;
+				Object.keys(provincialDataFull).forEach(key => provincialDataRecordCount += (provincialDataFull[key] || []).length);
+				log.debug(`-> Provincial data : retrieved ${provincialDataRecordCount} records in ${printTime(timing)}.`)					
 		
 				// Rebuilding plots and digests
 				await buildMessagesCaches();
@@ -522,3 +548,63 @@ bot.on('callback_query', (callbackQuery) => {
 	bot.answerCallbackQuery(callbackQuery.id);
 
 });
+
+/**
+ * Matches command /province, /provincia.
+ * Also, accepts province name as option.
+ */
+bot.onText(/\/provinc[iae]*([ ]+([a-zA-Z]+))?/, async (msg, match) => {
+
+	if (match[2]){
+
+		const regSearch = match[2];
+		const prov = findProvinceByName(regSearch);
+		
+		if (!prov){
+			
+			const errorMess = `Nessuna provincia individuata. La sintassi corretta è \n<b>/provincia parte_del_nome</b>\n(esempio: /provincia berg, /provincia milano)`
+			
+			bot.sendMessage(
+				msg.chat.id, 
+				errorMess, 
+				{parse_mode: 'HTML'}
+			);
+
+			return;
+
+		}
+
+		let timing = process.hrtime();
+		const dataset = provincialDataFull[prov['codice_provincia']]
+		await sendProvinceData(bot, msg.chat.id, dataset, prov);
+		timing = process.hrtime(timing);
+		log.debug(`Sent requested provincial data (${prov.denominazione_provincia}) to chat id: ${msg.chat.id} (in ${printTime(timing)}).`);
+		
+		return;
+
+	}
+
+	const data = PROVINCES
+	.filter(prov => prov['codice_provincia'] < 500)
+	.map(prov => {
+		const codice = prov['codice_provincia']
+		const dataset = provincialDataFull[codice]
+		const last = dataset[dataset.length-1]
+		const before = dataset[dataset.length-2]
+		return ({
+			...prov,
+			totale_casi: last['totale_casi'],
+			nuovi_casi: last['totale_casi'] - before['totale_casi'],
+			data: last['data']
+		})
+	})
+	.sort((a, b) => b.nuovi_casi - a.nuovi_casi)
+	.slice(0, 10)
+
+	const lastDate = lastDateAsString(data);
+	let text = `<b>Province con il maggior numero di nuovi casi (al ${lastDate}):</b>\n`;
+	data.forEach(item => text += `\n ${item.nuovi_casi.toString().padStart(5, ' ')} -> ${item.denominazione_provincia}`)
+
+	bot.sendMessage(msg.chat.id, text, {parse_mode: 'HTML'});
+
+})
