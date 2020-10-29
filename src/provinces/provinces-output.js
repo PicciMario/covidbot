@@ -15,6 +15,7 @@ import {
 	lastDateAsString, dateAsString,
 	formatInt, formatIntSign, formatPerc
 } from '../utilities'
+import Logger from '../logger';
 
 const PROV_DENOMINAZIONE_REG = 'denominazione_regione'
 const PROV_DENOMINAZIONE = 'denominazione_provincia'
@@ -48,6 +49,10 @@ export function createProvinceDailyDigest(dataset){
  * @returns {Promise<Buffer>}
  */
 export function createProvincialPlot(fullDataset, regionObject) {
+
+	if (!fullDataset) {
+		
+	}
 
 	let dataset = sliceDataset(fullDataset)
 

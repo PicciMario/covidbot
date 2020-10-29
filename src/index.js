@@ -12,7 +12,7 @@ import {manageAreaCallback, manageRegionCallback, manageAreasListCallback, sendR
 import {findRegionByName} from './regions/regions-utilities'
 import {findProvinceByName} from './provinces/provinces-utilities'
 import {sendProvinceData} from './provinces/provinces-bot-functions'
-import {splitArray, printTime, lastDateAsString} from './utilities';
+import {splitArray, printTime, lastDateAsString, formatInt, formatIntSign} from './utilities';
 
 // Bot version
 const VERSION = '1.4.0';
@@ -562,7 +562,7 @@ bot.onText(/\/provinc[iae]*([ ]+([a-zA-Z]+))?/, async (msg, match) => {
 		
 		if (!prov){
 			
-			const errorMess = `Nessuna provincia individuata. La sintassi corretta è \n<b>/provincia parte_del_nome</b>\n(esempio: /provincia berg, /provincia milano)`
+			const errorMess = `Nessuna provincia individuata. La sintassi corretta è <code>/provincia parte_del_nome</code> (esempio: <code>/provincia berg</code> o <code>/provincia milano</code>)`
 			
 			bot.sendMessage(
 				msg.chat.id, 
@@ -584,6 +584,8 @@ bot.onText(/\/provinc[iae]*([ ]+([a-zA-Z]+))?/, async (msg, match) => {
 
 	}
 
+	let timing = process.hrtime();
+
 	const data = PROVINCES
 	.filter(prov => prov['codice_provincia'] < 500)
 	.map(prov => {
@@ -602,9 +604,19 @@ bot.onText(/\/provinc[iae]*([ ]+([a-zA-Z]+))?/, async (msg, match) => {
 	.slice(0, 10)
 
 	const lastDate = lastDateAsString(data);
-	let text = `<b>Province con il maggior numero di nuovi casi</b>\n(aggiornato al ${lastDate})\n`;
-	data.forEach(item => text += `\n ${item.nuovi_casi.toString().padStart(5, ' ')} - prov. di ${item.denominazione_provincia} (totale: ${item.totale_casi})`)
+	let text = `<b>Province con il maggior numero di nuovi casi</b>\n(dati del ${lastDate})\n`;
+	text += `\n<pre>`
+	data.forEach(item => {
+		const nuoviCasi = formatIntSign(item.nuovi_casi).padStart(7, ' ');
+		text += `${nuoviCasi} - prov. di ${item.denominazione_provincia}\n`
+	})
+	text += `</pre>\n`
 
-	bot.sendMessage(msg.chat.id, text, {parse_mode: 'HTML'});
+	text += `Usa il comando <code>/provincia nome</code> per ottenere informazioni specifiche per una provincia (esempio: <code>/provincia brescia</code>)`
+
+	await bot.sendMessage(msg.chat.id, text, {parse_mode: 'HTML'});
+
+	timing = process.hrtime(timing);
+	log.debug(`Sent generic provincial data to chat id: ${msg.chat.id} (in ${printTime(timing)})`)	
 
 })
