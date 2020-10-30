@@ -10,7 +10,7 @@ Simple Telegram bot written in NodeJS. Retrieves italian state-level COVID-19 in
 ![Sample plot](/sampleplot.jpg)
 ![Sample digest](/sampledigest.jpg)
 
-Also, the bot now sports a region-level digest with plot:
+Also, the bot now sports region-level and province-level digests with plot:
 
 ![Sample region](/sampleregion.jpg)
 
@@ -22,7 +22,9 @@ Also, the bot now sports a region-level digest with plot:
 - **/plot** - Request actual situation plot
 - **/digest** - Request daily digest
 - **/region** - Request daily region-level digest and plot
-- **/region name** - As above, for a specific region
+- **/region name** - As above, for a specific region (with plot)
+- **/provincia** - Provincial level data (list of today's most hit provinces)
+- **/provincia name** - Provincial data for a specific province (with plot)
 - **/about** - About
 - **/help** - Commands list
 

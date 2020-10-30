@@ -15,7 +15,7 @@ import {sendProvinceData} from './provinces/provinces-bot-functions'
 import {splitArray, printTime, lastDateAsString, formatInt, formatIntSign} from './utilities';
 
 // Bot version
-const VERSION = '1.4.0';
+const VERSION = '1.5.0';
 
 // Date format for the REDIS_LASTVALIDDATE Redis key content.
 const REDIS_LASTVALIDDATE_FORMAT = 'DD MMM YYYY HH:mm:SS';
