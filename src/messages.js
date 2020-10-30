@@ -39,6 +39,8 @@ Iscriviti /sub per ricevere aggiornamenti sulla situazione COVID in Italia, ogni
   /digest - Richiedi aggiornamento
   /regione - Richiedi aggiornamento per regione
   /regione nome - Richiedi aggiornamento per una regione
+  /province - Richiedi dati sintetici su province più colpite
+  /provincia nome - Richiedi aggiornamento per una provincia
   /about - Informazioni sul bot
   /help - Lista comandi`
 	)
@@ -46,7 +48,7 @@ Iscriviti /sub per ricevere aggiornamenti sulla situazione COVID in Italia, ogni
 
 export function photoCaption(){
 	let text = `Maggiori informazioni sulla situazione odierna: /digest`;
-	text += '\nNovità: usa il comando /regioni per visualizzare gli ultimi aggiornamenti per regione.'
+	text += '\n\nNovità: usa il comando /regioni per visualizzare gli ultimi aggiornamenti per regione, o il comando /province per i dati a livello di provincia.'
 	return text;
 }
 
