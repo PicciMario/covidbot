@@ -9,8 +9,8 @@ import * as messages from './messages';
 import {REGIONS} from './regions/regions-list';
 import {PROVINCES} from './provinces/provinces-list';
 import {manageAreaCallback, manageRegionCallback, manageAreasListCallback, sendRegionData} from './regions/regions-bot-functions'
-import {findRegionByName} from './regions/regions-utilities'
-import {findProvinceByName} from './provinces/provinces-utilities'
+import {findRegionByName, findRegionDataLastTimestamp} from './regions/regions-utilities'
+import {findProvinceByName, findProvinceDataLastTimestamp} from './provinces/provinces-utilities'
 import {sendProvinceData} from './provinces/provinces-bot-functions'
 import {splitArray, printTime, lastDateAsString, formatInt, formatIntSign} from './utilities';
 
@@ -137,6 +137,7 @@ async function main(){
 		italianData = await retrieveDailyData()		
 		timing = process.hrtime(timing);
 		log.debug(`-> National data: retrieved ${italianData.length} records in ${printTime(timing)}.`)
+		log.debug(`   last timestamp: ${lastDateAsString(italianData)}`)
 
 		timing = process.hrtime();
 		regionalDataFull = await retrieveRegioniDataComplete()	
@@ -144,6 +145,7 @@ async function main(){
 		let regionalDataRecordCount = 0;
 		Object.keys(regionalDataFull).forEach(key => regionalDataRecordCount += (regionalDataFull[key] || []).length);
 		log.debug(`-> Regional data : retrieved ${regionalDataRecordCount} records in ${printTime(timing)}.`)	
+		log.debug(`   last timestamp: ${findRegionDataLastTimestamp(regionalDataFull)}`)
 		
 		timing = process.hrtime();
 		provincialDataFull = await retrieveProvinceDataComplete()	
@@ -151,6 +153,7 @@ async function main(){
 		let provincialDataRecordCount = 0;
 		Object.keys(provincialDataFull).forEach(key => provincialDataRecordCount += (provincialDataFull[key] || []).length);
 		log.debug(`-> Provincial data : retrieved ${provincialDataRecordCount} records in ${printTime(timing)}.`)			
+		log.debug(`   last timestamp: ${findProvinceDataLastTimestamp(provincialDataFull)}`)
 
 	}
 	catch (err){
@@ -249,6 +252,7 @@ async function sendAll(force=false) {
 				let regionalDataRecordCount = 0;
 				Object.keys(regionalDataFull).forEach(key => regionalDataRecordCount += (regionalDataFull[key] || []).length);
 				log.debug(`-> Regional data : retrieved ${regionalDataRecordCount} records in ${printTime(timing)}.`)	
+				log.debug(`   last timestamp: ${findRegionDataLastTimestamp(regionalDataFull)}`)
 				
 				// Retrieve provincial data
 				timing = process.hrtime();
@@ -256,7 +260,8 @@ async function sendAll(force=false) {
 				timing = process.hrtime(timing);
 				let provincialDataRecordCount = 0;
 				Object.keys(provincialDataFull).forEach(key => provincialDataRecordCount += (provincialDataFull[key] || []).length);
-				log.debug(`-> Provincial data : retrieved ${provincialDataRecordCount} records in ${printTime(timing)}.`)					
+				log.debug(`-> Provincial data : retrieved ${provincialDataRecordCount} records in ${printTime(timing)}.`)	
+				log.debug(`   last timestamp: ${findProvinceDataLastTimestamp(provincialDataFull)}`)				
 		
 				// Rebuilding plots and digests
 				await buildMessagesCaches();
